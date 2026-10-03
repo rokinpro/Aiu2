@@ -34,6 +34,8 @@ Copy `.env.example` to `.env.local`. Set `AIU2_INGEST_TOKEN` to a randomly gener
 
 Set `WATSONX_API_KEY`, `WATSONX_PROJECT_ID`, `WATSONX_URL`, and `WATSONX_MODEL_ID` in ignored `.env.local` for IBM inference. The configured region is `https://us-south.ml.cloud.ibm.com` and the selected model is `ibm/granite-4-h-small`. The key is never sent to the browser. The project must be associated with a watsonx.ai/WML service instance. An IAM smoke check succeeded on 2026-10-03, but a real chat request returned `403 no_associated_service_instance_error` for the supplied project, so IBM inference is **not yet connected**. No Tiger Data connection is used: its supplied URL has no password, and SQLite remains the working persistence layer. If later enabled, Tiger Data would centralize reports, preferences, and latest per-zone readings across multiple app servers or team devices; it is unnecessary for the current single-server flow.
 
+The [current Hack Dearborn terms](https://www.hackdearborn.org/terms) describe general participation and prize rules, but the published site does not establish an IBM-specific track requirement. The team brief says the supplied rubric scores IBM technology. Confirm any IBM-specific scoring or sponsor eligibility with organizers before presenting that as an official rule.
+
 ## API contract
 
 `POST /api/sensors/ingest` requires `Authorization: Bearer <AIU2_INGEST_TOKEN>` and JSON:
