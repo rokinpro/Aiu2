@@ -1,6 +1,6 @@
 # Aiu2
 
-A campus accessibility companion: choose your needs, compare routes, inspect places and contribute observations. **Prompt 1 / app-first scaffold.** This is a fictional two-floor demo, not a verified campus navigation service.
+A campus accessibility companion: choose your needs, compare routes, inspect places and contribute observations. **Prompts 1–2 / app-first routing demo.** This is a fictional two-floor demo, not a verified campus navigation service.
 
 ## Run locally
 
@@ -17,12 +17,12 @@ Open http://localhost:3000. No credentials are needed. For production: `npm run 
 
 - Responsive journey planner with functional preferences, start/destination selection, clickable two-floor SVG map, location details and equivalent ordered text directions.
 - 12 map places and 25 explicit directed edges. Elevator A, Elevator B, stairs, an automatic entrance, resting bench, restroom and classroom. A map place is not a hardware device.
-- Deterministic Dijkstra routing. No-stairs and minimum-known-width constraints, closures, travel and walking costs, optional resting preference, and deduplicated route options. All distances/times are demo estimates; width, slope, surface and lighting are unknown.
+- Deterministic Dijkstra routing with configurable nonnegative costs. No-stairs and minimum-known-width constraints, closures, travel and walking costs, optional resting preference, and deduplicated route options. All distances/times are demo estimates; width, slope, surface and lighting are unknown.
 - One sensor zone reserved at `elevator-a-lobby` for `beacon-a`. `/conditions` honestly shows no connection and unknown readings.
 - Preferences and up to 50 pending observations persist in this browser's local storage. Reports include source, contributor and timestamp. They do not change the graph.
 - Visible keyboard focus, labeled native form controls, large targets, reduced-motion support and text alternatives to map interactions.
 
-Quieter-area and dim-area preferences are stored and the routing module supports those costs, but the demo has no condition feed or lighting measurements. The interface does not claim a route is quiet or bright. When direct and preferred paths match, only one card appears; choose “Prefer resting points” to compare the bench route with the direct elevator route.
+The planner has a clearly labeled activity simulator: raise or clear activity at Elevator A, wait for three consecutive one-second summaries, and accept or decline a route offer. Disconnecting the simulated feed becomes unknown after five seconds. Map and text directions retain the selected journey until the traveler changes it. Lighting and surface preferences apply only to recorded attributes; the seed has neither measurement. The interface does not claim a route is quiet or bright. When direct and preferred paths match, only one card appears; choose “Prefer resting points” to compare the bench route with the direct elevator route.
 
 ## What is next
 
@@ -32,7 +32,7 @@ Quieter-area and dim-area preferences are stored and the routing module supports
 4. Add explicit pairing, short-lived commands and controller acknowledgements.
 5. Add one reviewed AI feature, preferably IBM needs interpretation or report drafting after event eligibility and access are confirmed.
 
-No AI provider, database, sensor ingestion, USB bridge, two-way commands, authentication or hosted app is connected. No synthetic hardware readings are presented. Unit tests exercise synthetic activity inputs only. The original project brief describes later stages; those embedded prompts are a roadmap, not completed features.
+No AI provider, database, sensor ingestion, USB bridge, two-way commands, authentication or hosted app is connected. Simulated activity is explicitly labeled and does not represent physical hardware. The dashboard remains a disconnected hardware view; the interactive scenario controls live in the planner. The original project brief describes later stages; those embedded prompts are a roadmap, not completed features.
 
 ## Configuration
 
@@ -51,3 +51,9 @@ No AI provider, database, sensor ingestion, USB bridge, two-way commands, authen
 Select Automatic entrance → Classroom 201 with Avoid stairs. Inspect both floors and expand the text directions. Enable Prefer resting points and compare the longer Elevator B route with the direct Elevator A route. Enter a required width to see that unknown measurements cannot meet it. Clear the width, save an observation and reload to verify local persistence. Open Live conditions to see the single planned device and honest disconnected state.
 
 The map is not to scale; elevator service is not verified. There is no indoor positioning or automatic recognition of users. Local reports are device-local and not submitted to campus staff. Access constraints are checked against fictional data and do not certify a real journey.
+
+## Judge demo for route changes
+
+Click **Reset demo**, then **Raise lobby activity**. After three updates, the route offer shows Elevator B avoiding the simulated active zone, adding 24 metres and 31 seconds. The map still follows Elevator A until **Use this route** is clicked. **Keep my route** dismisses the offer. Clear the lobby to offer the shorter route again, or disconnect the feed to demonstrate unknown activity after five seconds. This is a UI scenario simulator, not the future raw-distance filtering/USB ingestion pipeline.
+
+`DEFAULT_WEIGHTS` in `lib/routing.ts` configures time, walking, activity, dim lighting, rough/gravel surfaces and missing resting opportunities. These are demo heuristics, not clinically validated scores. A `now` option makes freshness deterministic in tests. Confirmed closures are represented by `Edge.closed`; pending community reports never set this flag. Unknown widths cannot meet a required minimum. Unknown lighting/surface/activity earns no favorable claim.

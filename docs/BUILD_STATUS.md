@@ -1,6 +1,6 @@
 # Build status
 
-The complete supplied brief was reviewed. Current authorization is the app-first scaffold, repository setup and Prompt 1. Later prompt stages remain future work.
+The complete supplied brief was reviewed. Prompts 1 and 2 are implemented. Later hardware, persistence and provider stages remain future work.
 
 ## Architectural decisions
 
@@ -9,7 +9,7 @@ The complete supplied brief was reviewed. Current authorization is the app-first
 - Implement enough routing to make the interface functional now. Prefer transparent facts over an accessibility score.
 - Use local browser storage explicitly for the initial interface. Shared persistence needs a server adapter in the next stage.
 - Keep the physical dashboard separate from traveler controls. Unknown is the initial sensor state.
-- Do not connect optional sponsors, write hardware-specific firmware or invent live readings in this stage.
+- Do not connect optional sponsors or write hardware-specific firmware in this stage. Simulated activity must be clearly labeled and never called physical hardware.
 
 ## Verification
 

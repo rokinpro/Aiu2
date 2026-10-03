@@ -38,6 +38,7 @@ export type Profile = {
   quieter: boolean;
   resting: boolean;
   avoidDim: boolean;
+  smoother: boolean;
   minWidthCm: number | null;
 };
 export type SensorPayload = {
@@ -75,4 +76,5 @@ export type Route = {
   seconds: number;
   hasStairs: boolean;
   hasBench: boolean;
+  reasons: string[];
 };

@@ -82,8 +82,8 @@ export default function Conditions() {
           </li>
         </ol>
         <p className="small muted">
-          Hardware, simulated readings, AI calls and two-way commands are not
-          enabled in this scaffold.
+          Hardware, AI calls and two-way commands are not enabled. Try the
+          labeled activity simulation in the journey planner.
         </p>
       </section>
     </main>

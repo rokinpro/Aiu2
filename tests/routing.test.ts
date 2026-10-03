@@ -124,3 +124,91 @@ test("resting preference favors the bench and preserves direct alternative", () 
   assert.ok(routes[0].hasBench);
   assert.equal(routes.length, 2);
 });
+
+test("zone changes require three consecutive samples; stale and future readings are unknown", async () => {
+  const { advanceActivity, currentActivity } =
+    await import("../lib/conditions");
+  let state = {
+    candidate: "unknown",
+    count: 0,
+    activity: "unknown",
+  } as import("../lib/conditions").Stability;
+  state = advanceActivity(state, "sustained");
+  state = advanceActivity(state, "sustained");
+  assert.equal(state.activity, "unknown");
+  state = advanceActivity(state, "clear");
+  assert.equal(state.count, 1);
+  state = advanceActivity(state, "sustained");
+  state = advanceActivity(state, "sustained");
+  state = advanceActivity(state, "sustained");
+  assert.equal(state.activity, "sustained");
+  const now = Date.parse("2026-10-03T18:00:00Z");
+  const condition: Condition = {
+    zoneId: "elevator-a-lobby",
+    activity: "sustained",
+    sourceMode: "simulation",
+    receivedAt: new Date(now).toISOString(),
+    distanceCm: 20,
+  };
+  assert.equal(currentActivity(condition, now + 5001), "unknown");
+  assert.equal(currentActivity(condition, now - 1), "unknown");
+  assert.equal(
+    routeChoices(graph, "entrance", "classroom", defaultProfile, condition, {
+      now,
+    })[0].nodes.includes("b1"),
+    true,
+  );
+});
+
+test("lighting and surface weights favor recorded comfortable alternatives without treating unknowns as facts", () => {
+  const recorded = {
+    ...graph,
+    edges: graph.edges.map((e) => ({
+      ...e,
+      lighting: e.zoneId ? ("dim" as const) : null,
+      surface: e.zoneId ? "rough" : null,
+    })),
+  };
+  for (const preference of [{ avoidDim: true }, { smoother: true }]) {
+    const options = routeChoices(recorded, "entrance", "classroom", {
+      ...defaultProfile,
+      ...preference,
+    });
+    assert.ok(options[0].nodes.includes("b1"));
+    assert.equal(options.length, 2);
+    assert.ok(options[0].reasons.some((r) => r.includes("Unknown")));
+  }
+});
+
+test("weights are configurable and nonnegative; zero-cost cycles terminate deterministically", () => {
+  assert.throws(
+    () =>
+      routeChoices(graph, "entrance", "classroom", defaultProfile, undefined, {
+        weights: { travelTime: -1 },
+      }),
+    /nonnegative/,
+  );
+  const zero = { weights: { travelTime: 0 } };
+  const first = routeChoices(
+    graph,
+    "entrance",
+    "classroom",
+    defaultProfile,
+    undefined,
+    zero,
+  );
+  const reordered = routeChoices(
+    {
+      ...graph,
+      nodes: [...graph.nodes].reverse(),
+      edges: [...graph.edges].reverse(),
+    },
+    "entrance",
+    "classroom",
+    defaultProfile,
+    undefined,
+    zero,
+  );
+  assert.deepEqual(first, reordered);
+  assert.ok(first[0].edges.length < graph.nodes.length);
+});

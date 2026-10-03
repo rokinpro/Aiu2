@@ -15,7 +15,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { graph, nodes, defaultProfile } from "@/lib/demo";
-import { routeChoices } from "@/lib/routing";
+import { useDemoCondition } from "./use-demo-condition";
+import { findRoute, routeChoices } from "@/lib/routing";
 import type { Profile, ReportPayload, Route } from "@/lib/types";
 const labels: [keyof Omit<Profile, "minWidthCm">, string, React.ReactNode][] = [
   ["noStairs", "Avoid stairs", <Accessibility key="a" size={18} />],
@@ -23,6 +24,7 @@ const labels: [keyof Omit<Profile, "minWidthCm">, string, React.ReactNode][] = [
   ["quieter", "Prefer quieter areas", <Volume2 key="c" size={18} />],
   ["resting", "Prefer resting points", <Armchair key="d" size={18} />],
   ["avoidDim", "Avoid dim areas", <Sun key="e" size={18} />],
+  ["smoother", "Prefer smoother paths", <Footprints key="f" size={18} />],
 ];
 export default function Planner() {
   const [profile, setProfile] = useState(defaultProfile);
@@ -30,20 +32,28 @@ export default function Planner() {
   const [destination, setDestination] = useState("classroom");
   const [floor, setFloor] = useState<1 | 2>(1);
   const [place, setPlace] = useState("a1");
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Route | null>(null);
   const [reports, setReports] = useState<ReportPayload[]>([]);
   const [status, setStatus] = useState("");
   const [loaded, setLoaded] = useState(false);
+  const demo = useDemoCondition();
+  const [dismissed, setDismissed] = useState("");
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem("aiu2-profile") || "null");
       if (
         saved &&
-        labels.every(([key]) => typeof saved[key] === "boolean") &&
+        labels.every(
+          ([key]) => key === "smoother" || typeof saved[key] === "boolean",
+        ) &&
         (saved.minWidthCm === null ||
           (typeof saved.minWidthCm === "number" && saved.minWidthCm > 0))
       )
-        setProfile(saved);
+        setProfile({
+          ...defaultProfile,
+          ...saved,
+          smoother: saved.smoother === true,
+        });
       const items = JSON.parse(localStorage.getItem("aiu2-reports") || "[]");
       if (Array.isArray(items))
         setReports(
@@ -64,8 +74,47 @@ export default function Planner() {
         localStorage.setItem("aiu2-profile", JSON.stringify(profile));
       } catch {}
   }, [profile, loaded]);
-  const choices = routeChoices(graph, start, destination, profile);
-  const active = choices.find((r) => r.id === selected) ?? choices[0];
+  const computed = routeChoices(
+    graph,
+    start,
+    destination,
+    profile,
+    demo.condition,
+    { now: demo.now },
+  );
+  const retained = selected
+    ? findRoute(
+        { nodes: graph.nodes, edges: selected.edges },
+        start,
+        destination,
+        profile,
+        false,
+        demo.condition,
+        { now: demo.now },
+      )
+    : null;
+  const active = retained ?? computed[0];
+  const choices =
+    retained && !computed.some((r) => r.id === retained.id)
+      ? [...computed, retained]
+      : computed;
+  const suggestion =
+    active && computed[0]?.id !== active.id ? computed[0] : null;
+  const offerKey = `${suggestion?.id}-${demo.activity}`;
+  function changeDemo(mode: Parameters<typeof demo.changeMode>[0]) {
+    setSelected(active ?? null);
+    setDismissed("");
+    demo.changeMode(mode);
+  }
+  function resetDemo() {
+    setProfile(defaultProfile);
+    setStart("entrance");
+    setDestination("classroom");
+    setFloor(1);
+    setSelected(null);
+    setDismissed("");
+    demo.changeMode("off");
+  }
   const location = nodes.find((n) => n.id === place)!;
   function update(key: keyof Profile, value: boolean | number | null) {
     setProfile((p) => ({ ...p, [key]: value }));
@@ -102,6 +151,59 @@ export default function Planner() {
           access measurements are unverified.
         </p>
       </div>
+      <section
+        className="demo-controls"
+        aria-label="Interactive route demonstration"
+      >
+        <div className="demo-intro">
+          <span className="demo-label">INTERACTIVE DEMO · SIMULATED</span>
+          <h2>See your route respond.</h2>
+          <p>One lobby changes. You stay in control.</p>
+        </div>
+        <div className="demo-actions">
+          <button
+            disabled={demo.mode === "busy"}
+            onClick={() => changeDemo("busy")}
+          >
+            ① Raise lobby activity
+          </button>
+          <button
+            disabled={demo.mode === "clear"}
+            onClick={() => changeDemo("clear")}
+          >
+            ② Clear the lobby
+          </button>
+          <button
+            disabled={demo.mode === "off" || demo.mode === "disconnected"}
+            onClick={() => changeDemo("disconnected")}
+          >
+            Disconnect feed
+          </button>
+          <button className="reset-demo" onClick={resetDemo}>
+            Reset demo
+          </button>
+        </div>
+        <div className="demo-reading" role="status">
+          <span className={`activity-light ${demo.activity}`} />
+          <strong>
+            {demo.activity === "unknown"
+              ? "Activity unknown"
+              : demo.activity === "sustained"
+                ? "Sustained activity near Elevator A"
+                : "Demo lobby clear"}
+          </strong>
+          <span>
+            {(demo.mode === "busy" || demo.mode === "clear") &&
+            demo.progress < 3
+              ? `Confirming change · ${demo.progress}/3 updates`
+              : demo.mode === "disconnected"
+                ? "Feed stopped · unknown after 5 seconds"
+                : demo.mode === "off"
+                  ? "Choose a scenario to begin"
+                  : "Simulated readings · not physical hardware"}
+          </span>
+        </div>
+      </section>
       <div className="workspace">
         <aside className="panel preferences">
           <div className="section-title">
@@ -160,6 +262,10 @@ export default function Planner() {
               </label>
             ))}
           </div>
+          <p className="small muted">
+            Lighting and surfaces are unmeasured. These preferences apply when
+            observations are available.
+          </p>
           <details className="width-details">
             <summary>Minimum clear width</summary>
             <label className="field">
@@ -187,6 +293,54 @@ export default function Planner() {
           </p>
         </aside>
         <section className="map-column">
+          {suggestion && dismissed !== offerKey && (
+            <section
+              className="route-offer"
+              aria-label="Suggested route change"
+              aria-live="polite"
+            >
+              <span className="demo-label">A NEW OPTION · YOUR CHOICE</span>
+              <h2>
+                {demo.activity === "sustained"
+                  ? "Take a route away from the activity?"
+                  : "A different route now fits your preferences."}
+              </h2>
+              <p>
+                {routeName(suggestion)}
+                {demo.activity === "sustained" &&
+                !suggestion.edges.some((e) => e.zoneId === "elevator-a-lobby")
+                  ? " avoids the activity near Elevator A."
+                  : "."}{" "}
+                {suggestion.distanceM >= active.distanceM
+                  ? `${suggestion.distanceM - active.distanceM} m more`
+                  : `${active.distanceM - suggestion.distanceM} m less`}{" "}
+                walking, {Math.abs(suggestion.seconds - active.seconds)} seconds{" "}
+                {suggestion.seconds >= active.seconds ? "longer" : "shorter"} in
+                this demo.
+              </p>
+              <p className="small">
+                Your map and directions still follow{" "}
+                {routeName(active).toLowerCase()}.
+              </p>
+              <div>
+                <button
+                  className="primary"
+                  onClick={() => {
+                    setSelected(suggestion);
+                    setDismissed("");
+                  }}
+                >
+                  Use this route <ArrowRight size={17} />
+                </button>
+                <button
+                  className="keep-route"
+                  onClick={() => setDismissed(offerKey)}
+                >
+                  Keep my route
+                </button>
+              </div>
+            </section>
+          )}
           <div className="panel map-panel">
             <div className="map-toolbar">
               <div>
@@ -361,8 +515,9 @@ export default function Planner() {
               <div className="panel empty">
                 <h3>No confirmed route found</h3>
                 <p>
-                  The demo has no measured path widths. Review your width
-                  requirement or choose another journey.
+                  {profile.minWidthCm !== null
+                    ? "No complete route has recorded widths meeting your minimum. Unknown widths cannot satisfy this requirement."
+                    : "No connected path meets your current access requirements. Try another start or destination."}
                 </p>
               </div>
             ) : (
@@ -371,11 +526,18 @@ export default function Planner() {
                   className={`route-card ${active?.id === r.id ? "selected" : ""}`}
                   key={r.id}
                   aria-pressed={active?.id === r.id}
-                  onClick={() => setSelected(r.id)}
+                  onClick={() => {
+                    setSelected(r);
+                    setDismissed("");
+                  }}
                 >
                   <div className="route-top">
                     <span className="route-tag">
-                      {i === 0 ? "BEST FIT" : "DIRECT OPTION"}
+                      {active?.id === r.id
+                        ? "YOUR SELECTED ROUTE"
+                        : i === 0
+                          ? "SUGGESTED FIT"
+                          : "DIRECT OPTION"}
                     </span>
                     <span className="radio-dot">
                       {active?.id === r.id && <Check size={13} />}
@@ -391,9 +553,11 @@ export default function Planner() {
                     {r.hasStairs ? "Includes stairs" : "No stairs"}
                     {r.hasBench ? " · Resting bench on the way" : ""}
                   </p>
-                  <p className="small muted">
-                    Demo estimates · widths and lighting unknown
-                  </p>
+                  <div className="route-reasons">
+                    {r.reasons.map((reason) => (
+                      <p key={reason}>{reason}</p>
+                    ))}
+                  </div>
                 </button>
               ))
             )}
@@ -475,9 +639,10 @@ export default function Planner() {
             {place === "a1" && (
               <div className="sensor-note">
                 <span className="status-dot" />
-                <strong>Sensor not connected</strong>
+                <strong>Physical sensor not connected</strong>
                 <p className="small">
-                  One planned device. Activity is unknown.
+                  One planned device. Live activity is unknown; the controls
+                  above use simulation.
                 </p>
               </div>
             )}

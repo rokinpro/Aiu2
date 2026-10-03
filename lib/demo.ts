@@ -173,5 +173,6 @@ export const defaultProfile: Profile = {
   quieter: true,
   resting: false,
   avoidDim: false,
+  smoother: false,
   minWidthCm: null,
 };

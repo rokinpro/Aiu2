@@ -11,3 +11,4 @@ Build the app first. The initial scope is a functional, accessible demo interfac
 - Reports remain pending review and do not modify the graph automatically. Browser storage is local demo storage, not a shared backend.
 - Implement later hardware/AI stages only when requested. Confirm board and module before wiring. Do not claim an integration works without a real test.
 - Run npm test and npm run build before handoff. Update README with actual behavior and limitations. Keep commits small and avoid unrelated changes.
+- Prioritize a polished, intuitive judge demonstration and accessible feature controls under the hackathon time limit. Keep verification focused: routing regression tests, one production build, and a short browser check of the changed journey; avoid exhaustive unrelated checks before pushing.
