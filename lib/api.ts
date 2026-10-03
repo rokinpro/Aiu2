@@ -72,9 +72,13 @@ export function profilePayload(data: Record<string, unknown>): Profile {
   ]) as Profile;
 }
 export function sensorPayload(data: Record<string, unknown>): SensorPayload {
+  const devices: Record<string, string> = {
+    "beacon-a": "elevator-a-lobby",
+    "beacon-b": "elevator-b-lobby",
+  };
   if (
-    data.deviceId !== "beacon-a" ||
-    data.zoneId !== "elevator-a-lobby" ||
+    typeof data.deviceId !== "string" ||
+    devices[data.deviceId] !== data.zoneId ||
     typeof data.bridgeSessionId !== "string" ||
     !/^[a-zA-Z0-9_-]{1,100}$/.test(data.bridgeSessionId) ||
     !Number.isSafeInteger(data.sequence) ||
@@ -92,8 +96,8 @@ export function sensorPayload(data: Record<string, unknown>): SensorPayload {
   if (data.validDistance && cm === null)
     throw new Error("Valid reading requires distance");
   return {
-    deviceId: "beacon-a",
-    zoneId: "elevator-a-lobby",
+    deviceId: data.deviceId,
+    zoneId: data.zoneId as string,
     bridgeSessionId: data.bridgeSessionId,
     sequence: data.sequence as number,
     sourceMode: data.sourceMode as SensorPayload["sourceMode"],

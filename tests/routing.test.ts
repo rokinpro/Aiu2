@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 import { graph, defaultProfile } from "../lib/demo";
 import { findRoute, routeChoices } from "../lib/routing";
 import type { Condition } from "../lib/types";
-test("demo contains 12 places, 25 valid directed edges and one zone", () => {
+test("map contains 12 places, 25 valid directed edges and two zones", () => {
   assert.equal(graph.nodes.length, 12);
   assert.equal(graph.edges.length, 25);
   assert.deepEqual(
     [...new Set(graph.edges.map((e) => e.zoneId).filter(Boolean))],
-    ["elevator-a-lobby"],
+    ["elevator-a-lobby", "elevator-b-lobby"],
   );
   for (const e of graph.edges) {
     assert.ok(graph.nodes.some((n) => n.id === e.from));
@@ -116,6 +116,20 @@ test("fresh sustained activity offers B while stale activity does not claim quie
     1,
   );
 });
+test("two zone conditions influence only their mapped edges", () => {
+  const now = Date.parse("2026-10-03T18:00:00Z");
+  const base: Condition = {
+    zoneId: "elevator-a-lobby",
+    activity: "clear",
+    sourceMode: "hardware",
+    receivedAt: new Date(now).toISOString(),
+    distanceCm: 80,
+  };
+  const b: Condition = { ...base, zoneId: "elevator-b-lobby", activity: "sustained", distanceCm: 10 };
+  const routes = routeChoices(graph, "entrance", "classroom", defaultProfile, [base, b], { now });
+  assert.ok(routes[0].nodes.includes("a1"));
+  assert.ok(!routes[0].nodes.includes("b1"));
+});
 test("resting preference favors the bench and preserves direct alternative", () => {
   const routes = routeChoices(graph, "entrance", "classroom", {
     ...defaultProfile,
@@ -165,8 +179,8 @@ test("lighting and surface weights favor recorded comfortable alternatives witho
     ...graph,
     edges: graph.edges.map((e) => ({
       ...e,
-      lighting: e.zoneId ? ("dim" as const) : null,
-      surface: e.zoneId ? "rough" : null,
+      lighting: e.zoneId === "elevator-a-lobby" ? ("dim" as const) : null,
+      surface: e.zoneId === "elevator-a-lobby" ? "rough" : null,
     })),
   };
   for (const preference of [{ avoidDim: true }, { smoother: true }]) {

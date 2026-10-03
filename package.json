@@ -10,18 +10,20 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ibm-cloud/watsonx-ai": "^1.7.16",
+    "ibm-cloud-sdk-core": "^5.8.0",
+    "lucide-react": "latest",
     "next": "latest",
     "react": "latest",
-    "react-dom": "latest",
-    "lucide-react": "latest"
+    "react-dom": "latest"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "tailwindcss": "^4",
-    "@tailwindcss/postcss": "^4",
-    "tsx": "^4"
+    "tsx": "^4",
+    "typescript": "^5"
   }
 }

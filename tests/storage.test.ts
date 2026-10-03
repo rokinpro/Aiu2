@@ -97,3 +97,28 @@ test("median filter suppresses isolated echoes; sources stay separate and fresh 
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("sensor zones retain separate windows and classification state", () => {
+  const directory = mkdtempSync(join(tmpdir(), "aiu2-"));
+  const store = openStore(join(directory, "test.sqlite"));
+  const now = Date.parse("2026-10-03T18:00:00Z");
+  const base: SensorPayload = {
+    deviceId: "beacon-a", zoneId: "elevator-a-lobby", bridgeSessionId: "multi",
+    sequence: 0, sourceMode: "hardware", distanceCm: 10, validDistance: true,
+    receivedAt: null,
+  };
+  try {
+    for (let i = 0; i < 26; i++) {
+      store.ingest({ ...base, sequence: i }, now + i * 200);
+      store.ingest({ ...base, deviceId: "beacon-b", zoneId: "elevator-b-lobby", distanceCm: 80, sequence: i }, now + i * 200);
+    }
+    const zones = store.conditions(now + 5000).zones;
+    assert.equal(zones[0].condition?.activity, "sustained");
+    assert.equal(zones[1].condition?.activity, "clear");
+    assert.equal(zones[0].summary?.medianCm, 10);
+    assert.equal(zones[1].summary?.medianCm, 80);
+  } finally {
+    store.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

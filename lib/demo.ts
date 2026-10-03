@@ -44,7 +44,7 @@ export const nodes: Place[] = [
     "elevator",
     430,
     290,
-    "The single planned ultrasonic sensor covers this lobby. Elevator operation is not monitored.",
+    "An ultrasonic sensor covers this lobby. Elevator operation is not monitored.",
   ),
   place(
     "bench",
@@ -62,7 +62,7 @@ export const nodes: Place[] = [
     "elevator",
     80,
     90,
-    "Alternative elevator. No sensor is assigned to this location.",
+    "Alternative elevator. A second sensing zone is prepared but has no connected device yet.",
   ),
   place(
     "s1",
@@ -154,7 +154,12 @@ function edge(
     surface: null,
     lighting: null,
     closed: false,
-    zoneId: from === "a1" || to === "a1" ? "elevator-a-lobby" : null,
+    zoneId:
+      from === "a1" || to === "a1"
+        ? "elevator-a-lobby"
+        : from === "b1" || to === "b1"
+          ? "elevator-b-lobby"
+          : null,
     verification: "demo",
   };
 }

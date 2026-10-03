@@ -22,14 +22,50 @@ export function openStore(
     CREATE TABLE IF NOT EXISTS preferences (owner TEXT PRIMARY KEY, payload TEXT NOT NULL, updated TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, owner TEXT NOT NULL, payload TEXT NOT NULL, created TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS reports_owner ON reports(owner,created);`);
-  const rows = (mode: string, now: number): Reading[] =>
+  const rows = (device: string, mode: string, now: number): Reading[] =>
     (
       db
         .prepare(
-          "SELECT payload FROM readings WHERE mode=? AND received>=? ORDER BY id",
+          "SELECT payload FROM readings WHERE device=? AND mode=? AND received>=? ORDER BY id",
         )
-        .all(mode, new Date(now - 10000).toISOString()) as { payload: string }[]
+        .all(device, mode, new Date(now - 10000).toISOString()) as { payload: string }[]
     ).map((r) => JSON.parse(r.payload));
+  function conditionFor(deviceId: string, zoneId: string, now: number) {
+    const latest = db
+      .prepare(
+        "SELECT payload FROM readings WHERE device=? ORDER BY CASE WHEN mode='hardware' AND received>=? THEN 0 ELSE 1 END, id DESC LIMIT 1",
+      )
+      .get(deviceId, new Date(now - 5000).toISOString()) as
+      { payload: string } | undefined;
+    if (!latest)
+      return { deviceId, zoneId, condition: null, summary: null, fresh: false, recent: [] };
+    const reading: Reading = JSON.parse(latest.payload);
+    const recent = rows(deviceId, reading.sourceMode, now);
+    const summary = summarize(
+      recent,
+      now,
+      Number(process.env.AIU2_FOREGROUND_CM) || 30,
+    );
+    const saved = db
+      .prepare("SELECT payload FROM sensor_state WHERE mode=?")
+      .get(`${deviceId}:${reading.sourceMode}`) as { payload: string } | undefined;
+    const state: SensorState = saved ? JSON.parse(saved.payload) : INITIAL_STATE;
+    const fresh = now - Date.parse(reading.receivedAt) <= 5000;
+    return {
+      deviceId,
+      zoneId,
+      condition: {
+        zoneId,
+        activity: !fresh || summary.activity === "unknown" ? "unknown" : state.activity,
+        sourceMode: reading.sourceMode,
+        receivedAt: reading.receivedAt,
+        distanceCm: reading.distanceCm,
+      },
+      summary,
+      fresh,
+      recent: recent.slice(-10),
+    };
+  }
   return {
     close: () => db.close(),
     ingest(input: SensorPayload, now = Date.now()) {
@@ -64,9 +100,9 @@ export function openStore(
         );
         const saved = db
           .prepare("SELECT payload FROM sensor_state WHERE mode=?")
-          .get(input.sourceMode) as { payload: string } | undefined;
+          .get(`${input.deviceId}:${input.sourceMode}`) as { payload: string } | undefined;
         const summary = summarize(
-          rows(input.sourceMode, now),
+          rows(input.deviceId, input.sourceMode, now),
           now,
           Number(process.env.AIU2_FOREGROUND_CM) || 30,
         );
@@ -77,7 +113,7 @@ export function openStore(
         );
         db.prepare(
           "INSERT INTO sensor_state VALUES(?,?) ON CONFLICT(mode) DO UPDATE SET payload=excluded.payload",
-        ).run(input.sourceMode, JSON.stringify(state));
+        ).run(`${input.deviceId}:${input.sourceMode}`, JSON.stringify(state));
         db.exec("COMMIT");
         return { duplicate: false, reading };
       } catch (error) {
@@ -86,43 +122,17 @@ export function openStore(
       }
     },
     conditions(now = Date.now()) {
-      const latest = db
-        .prepare(
-          "SELECT payload FROM readings ORDER BY CASE WHEN mode='hardware' AND received>=? THEN 0 ELSE 1 END, id DESC LIMIT 1",
-        )
-        .get(new Date(now - 5000).toISOString()) as
-        { payload: string } | undefined;
-      if (!latest)
-        return { condition: null, summary: null, fresh: false, recent: [] };
-      const reading: Reading = JSON.parse(latest.payload);
-      const recent = rows(reading.sourceMode, now);
-      const summary = summarize(
-        recent,
-        now,
-        Number(process.env.AIU2_FOREGROUND_CM) || 30,
-      );
-      const saved = db
-        .prepare("SELECT payload FROM sensor_state WHERE mode=?")
-        .get(reading.sourceMode) as { payload: string } | undefined;
-      const state: SensorState = saved
-        ? JSON.parse(saved.payload)
-        : INITIAL_STATE;
-      const fresh = now - Date.parse(reading.receivedAt) <= 5000;
+      const a = conditionFor("beacon-a", "elevator-a-lobby", now);
+      const b = conditionFor("beacon-b", "elevator-b-lobby", now);
       return {
-        condition: {
-          zoneId: reading.zoneId,
-          activity:
-            !fresh || summary.activity === "unknown"
-              ? "unknown"
-              : state.activity,
-          sourceMode: reading.sourceMode,
-          receivedAt: reading.receivedAt,
-          distanceCm: reading.distanceCm,
-        },
-        summary,
-        fresh,
-        recent: recent.slice(-10),
-        deviceId: reading.deviceId,
+        condition: a.condition,
+        summary: a.summary,
+        fresh: a.fresh,
+        recent: a.recent,
+        deviceId: a.deviceId,
+        zones: [a, b].map(({ deviceId, zoneId, condition, summary, fresh }) => ({
+          deviceId, zoneId, condition, summary, fresh,
+        })),
       };
     },
     getProfile(owner: string): Profile | null {

@@ -13,12 +13,13 @@ import {
   Flag,
   Check,
   ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import { graph, nodes, defaultProfile } from "@/lib/demo";
 import { useLiveConditions } from "./use-live-conditions";
 import ConditionsPanel from "./conditions-panel";
 import { findRoute, routeChoices } from "@/lib/routing";
-import type { Profile, ReportPayload, Route } from "@/lib/types";
+import type { Profile, ReportPayload, Route, PreferenceSuggestion } from "@/lib/types";
 const labels: [keyof Omit<Profile, "minWidthCm">, string, React.ReactNode][] = [
   ["noStairs", "Avoid stairs", <Accessibility key="a" size={18} />],
   ["lessWalking", "Less walking", <Footprints key="b" size={18} />],
@@ -43,6 +44,11 @@ export default function Planner() {
     "Loading preferences…",
   );
   const [dismissed, setDismissed] = useState("");
+  const [needsText, setNeedsText] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiStatus, setAiStatus] = useState("");
+  const [suggestions, setSuggestions] = useState<PreferenceSuggestion[] | null>(null);
+  const [aiSource, setAiSource] = useState("");
   useEffect(() => {
     let active = true;
     async function load() {
@@ -101,7 +107,7 @@ export default function Planner() {
     start,
     destination,
     profile,
-    demo.condition,
+    demo.zones?.map((zone) => zone.condition).filter((item): item is NonNullable<typeof item> => !!item) ?? demo.condition,
     { now: demo.now },
   );
   const retained = selected
@@ -111,7 +117,7 @@ export default function Planner() {
         destination,
         profile,
         false,
-        demo.condition,
+        demo.zones?.map((zone) => zone.condition).filter((item): item is NonNullable<typeof item> => !!item) ?? demo.condition,
         { now: demo.now },
       )
     : null;
@@ -203,6 +209,51 @@ export default function Planner() {
             <SlidersHorizontal size={17} />
           </div>
           <p className="small muted">Your preferences, your choice.</p>
+          <div className="ai-assist">
+            <div className="ai-assist-title"><Sparkles size={17} /><strong>Tell us what helps</strong></div>
+            <label htmlFor="needs-text" className="small muted">Describe your travel preferences in your own words.</label>
+            <textarea
+              id="needs-text"
+              value={needsText}
+              maxLength={500}
+              rows={3}
+              placeholder="I’d like to avoid stairs and stop at a bench."
+              onChange={(event) => { setNeedsText(event.target.value); setSuggestions(null); setAiStatus(""); setAiSource(""); }}
+            />
+            <button className="ai-action" type="button" disabled={aiBusy || needsText.trim().length < 4} onClick={async () => {
+              setAiBusy(true);
+              setAiStatus("");
+              setSuggestions(null);
+              try {
+                const response = await fetch("/api/preferences/interpret", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ text: needsText }),
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Could not interpret preferences.");
+                setSuggestions(result.suggestions);
+                setAiSource(result.source);
+                if (!result.suggestions.length) setAiStatus("No clear preference found. Use the choices below.");
+              } catch (error) {
+                setAiStatus(error instanceof Error ? error.message : "Could not interpret that right now. Use the choices below.");
+              } finally { setAiBusy(false); }
+            }}>{aiBusy ? "Interpreting…" : "Suggest my preferences"} <ArrowRight size={16} /></button>
+            {suggestions && suggestions.length > 0 && <div className="ai-review" aria-live="polite">
+              <strong>Review these suggestions</strong>
+              <p className="small muted">{aiSource}</p>
+              <p className="small muted">Inferred from your words. Nothing changes until you apply them.</p>
+              {suggestions.map((item) => <p key={item.key} className="ai-choice"><Check size={16} /> <span>{labels.find(([key]) => key === item.key)?.[1]}<small>“{item.evidence}”</small></span></p>)}
+              <button className="ai-apply" type="button" onClick={() => {
+                setProfile((previous) => ({ ...previous, ...Object.fromEntries(suggestions.map((item) => [item.key, true])) }));
+                setSelected(null);
+                setSuggestions(null);
+                setAiStatus("Preferences applied. You can adjust any choice below.");
+              }}>Apply these choices</button>
+            </div>}
+            {aiStatus && <p className="small" role="status">{aiStatus} {aiSource}</p>}
+            <p className="small muted">Your text is sent to IBM when you ask for suggestions. You can always use the controls below.</p>
+          </div>
           <div className="checks">
             {labels.map(([key, label, icon]) => (
               <label className="check-row" key={key}>
@@ -455,7 +506,7 @@ export default function Planner() {
               <span>
                 <i className="legend-dot" /> Place or landmark
               </span>
-              <span>12 places · 1 sensor zone</span>
+              <span>12 places · 2 sensor zones</span>
             </div>
           </div>
           <div className="routes-title">
@@ -599,6 +650,13 @@ export default function Planner() {
                     ? `Source: ${demo.condition.sourceMode}`
                     : "Awaiting sensor readings."}
                 </p>
+              </div>
+            )}
+            {place === "b1" && (
+              <div className="sensor-note">
+                <span className="status-dot" />
+                <strong>Local activity: {demo.zones?.find((zone) => zone.zoneId === "elevator-b-lobby")?.condition?.activity ?? "unknown"}</strong>
+                <p className="small">{demo.zones?.find((zone) => zone.zoneId === "elevator-b-lobby")?.fresh ? "Receiving sensor readings." : "Awaiting sensor readings."}</p>
               </div>
             )}
             <a href="#report" className="text-link">

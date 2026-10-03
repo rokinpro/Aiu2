@@ -13,6 +13,7 @@ export type RoutingOptions = {
   now?: number;
   weights?: Partial<typeof DEFAULT_WEIGHTS>;
 };
+type Conditions = Condition | Condition[];
 function weightsFor(options: RoutingOptions) {
   const weights = { ...DEFAULT_WEIGHTS, ...options.weights };
   if (
@@ -43,11 +44,14 @@ export function findRoute(
   destination: string,
   profile: Profile,
   ease: boolean,
-  condition?: Condition,
+  condition?: Conditions,
   options: RoutingOptions = {},
 ): Route | null {
   const weights = weightsFor(options);
-  const activity = currentActivity(condition, options.now ?? Date.now());
+  const conditions = condition ? Array.isArray(condition) ? condition : [condition] : [];
+  const activities = new Map(
+    conditions.map((item) => [item.zoneId, currentActivity(item, options.now ?? Date.now())]),
+  );
   if (
     !graph.nodes.some((n) => n.id === start) ||
     !graph.nodes.some((n) => n.id === destination)
@@ -72,11 +76,11 @@ export function findRoute(
       let cost = edge.seconds * weights.travelTime;
       if (ease) {
         if (profile.lessWalking) cost += edge.lengthM * weights.walking;
-        if (profile.quieter && edge.zoneId === condition?.zoneId)
+        if (profile.quieter && edge.zoneId)
           cost +=
-            activity === "sustained"
+            activities.get(edge.zoneId) === "sustained"
               ? weights.sustainedActivity
-              : activity === "some"
+              : activities.get(edge.zoneId) === "some"
                 ? weights.someActivity
                 : 0;
         if (
@@ -118,12 +122,20 @@ export function findRoute(
     edges.some((e) => e.stairs) ? "Includes stairs" : "No stairs on this route",
   ];
   if (hasBench) reasons.push("Passes the recorded resting bench");
-  if (activity === "sustained" || activity === "some")
-    reasons.push(
-      edges.some((e) => e.zoneId === condition?.zoneId)
-        ? "Passes the zone with reported activity"
-        : "Avoids the zone with reported activity",
-    );
+  for (const item of conditions) {
+    const activity = activities.get(item.zoneId);
+    const label = item.zoneId === "elevator-a-lobby"
+      ? "Elevator A lobby"
+      : item.zoneId === "elevator-b-lobby"
+        ? "Elevator B lobby"
+        : "the monitored zone";
+    if (activity === "sustained" || activity === "some")
+      reasons.push(
+        edges.some((e) => e.zoneId === item.zoneId)
+          ? `Passes ${label} with reported activity`
+          : `Avoids ${label} with reported activity`,
+      );
+  }
   if (profile.minWidthCm !== null && edges.length)
     reasons.push(
       `All path widths meet your ${profile.minWidthCm} cm requirement in the recorded data`,
@@ -138,7 +150,10 @@ export function findRoute(
     reasons.push(
       `Unknown ${unknowns.join(", ")}; route access is not certified`,
     );
-  if (profile.quieter && activity === "unknown")
+  if (profile.quieter && (
+    conditions.some((item) => activities.get(item.zoneId) === "unknown") ||
+    edges.some((edge) => edge.zoneId && !activities.has(edge.zoneId))
+  ))
     reasons.push("Activity is unknown; no quiet-route claim");
   return {
     id: ids.join("-"),
@@ -156,7 +171,7 @@ export function routeChoices(
   start: string,
   destination: string,
   profile: Profile,
-  condition?: Condition,
+  condition?: Conditions,
   options: RoutingOptions = {},
 ): Route[] {
   const resolved = { ...options, now: options.now ?? Date.now() };

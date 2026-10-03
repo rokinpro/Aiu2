@@ -12,14 +12,14 @@ export default function Conditions() {
         <div>
           <p className="eyebrow">LOCAL CONDITIONS</p>
           <h1>A clearer view of your next stop.</h1>
-          <p className="subtitle">Recent readings from the Elevator A lobby.</p>
+          <p className="subtitle">Recent readings from the sensor zones.</p>
         </div>
       </div>
       <ConditionsPanel />
       <section className="panel integration">
-        <h2>One sensor, useful context.</h2>
+        <h2>Local readings, useful context.</h2>
         <p>
-          A fixed ultrasonic sensor measures distance in this zone. A rolling
+          The connected ultrasonic sensor measures distance near Elevator A. A rolling
           window estimates local presence; it does not identify people or count
           a crowd.
         </p>

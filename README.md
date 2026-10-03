@@ -1,6 +1,6 @@
 # Aiu2
 
-Campus journey planning with personal preferences, route tradeoffs, community observations and local sensor conditions. Prompts 1–3 implemented. The two-floor map is illustrative; access measurements remain unverified.
+Campus journey planning with personal preferences, route tradeoffs, community observations and local sensor conditions. The two-floor map is illustrative; access measurements remain unverified.
 
 ## Run
 
@@ -20,7 +20,8 @@ Open http://localhost:3000. Production: `npm run build` then `npm start`. SQLite
 - The selected journey remains unchanged when conditions change. A new route offer explains its distance/time tradeoff; the traveler accepts or declines it.
 - Reports and preferences persist in SQLite. An anonymous HttpOnly session cookie scopes them to the browser; no medical identity or account is required. Reports remain pending and never change route access automatically. The interface shows the latest 50 reports belonging to that session. Clearing the cookie loses access to that session's records; this is not cross-device account sync or a moderation portal.
 - Authenticated sensor ingestion, durable deduplication, recent readings and source attribution.
-- A compact conditions panel and separate `/conditions` view poll the real API. Source mode is retained and shown there. There are no fabricated readings when the sensor is absent.
+- A compact conditions panel and separate `/conditions` view poll the real API. Each device has an isolated ten-second window and classification state. Elevator B is provisioned as a second zone with no connected device or fabricated readings.
+- A preference assistant interprets explicit travel requests, shows the matching words, and waits for the traveler to apply suggestions. IBM Granite is attempted server-side; a labeled local pattern fallback keeps the controls useful if IBM is unavailable. AI never chooses routes or invents map facts.
 
 ## Sensor configuration
 
@@ -31,7 +32,7 @@ Copy `.env.example` to `.env.local`. Set `AIU2_INGEST_TOKEN` to a randomly gener
 - `AIU2_SECURE_COOKIES=true`: use when hosting over HTTPS. Local HTTP development leaves this unset.
 - `AIU2_API_URL`: used by the development reading sender; defaults to http://127.0.0.1:3003.
 
-IBM and serial placeholders are reserved for later stages. No Tiger Data connection or other external service is used. Tiger Data would be appropriate later for centrally hosted reports/preferences and sensor history when multiple app instances or team devices need the same database.
+Set `WATSONX_API_KEY`, `WATSONX_PROJECT_ID`, `WATSONX_URL`, and `WATSONX_MODEL_ID` in ignored `.env.local` for IBM inference. The configured region is `https://us-south.ml.cloud.ibm.com` and the selected model is `ibm/granite-4-h-small`. The key is never sent to the browser. The project must be associated with a watsonx.ai/WML service instance. An IAM smoke check succeeded on 2026-10-03, but a real chat request returned `403 no_associated_service_instance_error` for the supplied project, so IBM inference is **not yet connected**. No Tiger Data connection is used: its supplied URL has no password, and SQLite remains the working persistence layer. If later enabled, Tiger Data would centralize reports, preferences, and latest per-zone readings across multiple app servers or team devices; it is unnecessary for the current single-server flow.
 
 ## API contract
 
@@ -49,9 +50,12 @@ IBM and serial placeholders are reserved for later stages. No Tiger Data connect
 }
 ```
 
+The future second device uses `deviceId: "beacon-b"` and `zoneId: "elevator-b-lobby"`. The authenticated endpoint accepts either registered pair and rejects mismatched device/zone IDs. No second physical device has been connected or verified.
+
 Use `simulation` or `replay` for generated or recorded events. Invalid echoes use `validDistance:false` and `distanceCm:null`; they are not evidence of empty space. Send raw readings around 5 Hz for the filter. Sequence is a nonnegative integer; bridge sessions must change after a restart. The server assigns UTC receipt time and ignores client timestamps. `(deviceId, bridgeSessionId, sequence)` deduplicates across restarts of the application; retries return the original event and do not refresh freshness or add samples. Accepted events are retained locally; sensor history analytics and retention tooling are not added.
 
-- `GET /api/conditions`: latest condition, quality, median distance, occupied fraction and ten recent samples. Fresh hardware takes priority; windows are isolated by source mode.
+- `GET /api/conditions`: Elevator A condition plus a `zones` array for A and B, with quality, median distance, occupied fraction and ten recent A samples. Fresh hardware takes priority per device; windows and state are isolated by device and source mode.
+- `POST /api/preferences/interpret`: send `{ "text": "I want to avoid stairs and stop at a bench." }`. It returns reviewed suggestions plus a source label. IBM model output is schema-checked against allowed preference keys and exact input evidence; errors use a labeled local fallback. No unknown fields become preferences and nothing changes until the traveler applies suggestions.
 - `GET /api/preferences`, `PUT /api/preferences`: session-scoped profile. PUT needs an Origin matching the app URL.
 - `GET /api/reports`, `POST /api/reports`: session-scoped pending observations. POST validates location/type/text and assigns source, ID, timestamp and pending status on the server. Origin must match; a session can submit at most ten reports per minute.
 - `GET /api/health`: SQLite readiness and whether ingestion authentication is configured; no secrets.
@@ -79,6 +83,6 @@ The sender always labels data `simulation`. Select Avoid stairs and Prefer quiet
 
 Run `npm test` and `npm run build`. Focused tests cover routing, smoothing, invalid echoes, stale reads, retry deduplication, source isolation and reopening SQLite to prove persistence. A real HTTP smoke check covers authorization, ingestion, report/profile persistence and stale status using generated input. This does not prove physical hardware operation.
 
-The Arduino UNO Q (4 GB) is connected and the HC-SR04 sketch has compiled and flashed. App Lab's Python forwarder delivers actual hardware events at roughly 5 Hz through USB ADB reverse forwarding. Current echoes are invalid (null distance), so physical distance measurement and object-driven route changes remain pending. See [hardware setup](hardware/README.md). AI, two-way commands, moderation, account sync and production hosting remain future work. No elevator operation, continuous indoor location or safety certification is inferred from sensor activity.
+The Arduino UNO Q (4 GB) is connected and the HC-SR04 sketch has compiled and flashed. App Lab's Python forwarder has delivered actual hardware events at roughly 5 Hz through USB ADB reverse forwarding. A roughly 10 cm object has produced raw measurements near 10 cm without a software offset. Continuous physical operation still depends on the board, bridge, and server being running. See [hardware setup](hardware/README.md). IBM inference awaits a WML-associated project; moderation, account sync and production hosting remain future work. No elevator operation, continuous indoor location or safety certification is inferred from sensor activity.
 
 Read `AGENTS.md` before contributing. Shared types live in `lib/types.ts`; storage in `lib/storage.ts`; signal processing in `lib/sensor-processing.ts`; routing in `lib/routing.ts`. GitHub Actions runs tests and build. Use small branches/PRs and prioritize an intuitive judge presentation.

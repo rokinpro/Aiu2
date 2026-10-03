@@ -91,4 +91,15 @@ export type ConditionsResponse = {
   } | null;
   recent: SensorPayload[];
   deviceId?: string;
+  zones?: Array<{
+    deviceId: string;
+    zoneId: string;
+    condition: Condition | null;
+    fresh: boolean;
+    summary: ConditionsResponse["summary"];
+  }>;
+};
+export type PreferenceSuggestion = {
+  key: keyof Omit<Profile, "minWidthCm">;
+  evidence: string;
 };

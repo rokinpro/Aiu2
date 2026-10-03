@@ -8,7 +8,7 @@ export default function ConditionsPanel({
   compact?: boolean;
 }) {
   const live = useLiveConditions();
-  const age = live.condition?.receivedAt
+  const age = live.now > 0 && live.condition?.receivedAt
     ? Math.max(
         0,
         Math.floor((live.now - Date.parse(live.condition.receivedAt)) / 1000),
@@ -71,6 +71,12 @@ export default function ConditionsPanel({
         </Link>
       ) : (
         <>
+          <div className="sensor-zone-list" aria-label="Sensor zones">
+            {(live.zones ?? []).map((zone) => <div key={zone.zoneId}>
+              <strong>{zone.zoneId === "elevator-a-lobby" ? "Elevator A lobby" : "Elevator B lobby"}</strong>
+              <span>{zone.fresh ? `${zone.condition?.activity ?? "unknown"} activity · ${zone.condition?.distanceCm?.toFixed(1) ?? "—"} cm` : "No fresh data"}</span>
+            </div>)}
+          </div>
           <dl>
             <div>
               <dt>Median filtered distance</dt>
