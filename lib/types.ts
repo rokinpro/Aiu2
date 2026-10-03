@@ -78,3 +78,17 @@ export type Route = {
   hasBench: boolean;
   reasons: string[];
 };
+export type ConditionsResponse = {
+  condition: Condition | null;
+  fresh: boolean;
+  summary: {
+    activity: Condition["activity"];
+    medianCm: number | null;
+    occupiedFraction: number | null;
+    quality: number;
+    validSamples: number;
+    totalSamples: number;
+  } | null;
+  recent: SensorPayload[];
+  deviceId?: string;
+};

@@ -26,7 +26,7 @@ export const nodes: Place[] = [
     "entrance",
     80,
     290,
-    "Automatic door in this fictional demo. Clear width and opening force have not been measured.",
+    "Automatic door on this map. Clear width and opening force have not been measured.",
   ),
   place(
     "hall",
@@ -53,7 +53,7 @@ export const nodes: Place[] = [
     "bench",
     240,
     170,
-    "A resting point on the demo west corridor. Seat dimensions are unknown.",
+    "A resting point on the west corridor. Seat dimensions are unknown.",
   ),
   place(
     "b1",
@@ -80,7 +80,7 @@ export const nodes: Place[] = [
     "restroom",
     80,
     170,
-    "Demo restroom; access measurements are unknown.",
+    "Restroom; access measurements are unknown.",
   ),
   place(
     "a2",
@@ -89,7 +89,7 @@ export const nodes: Place[] = [
     "elevator",
     430,
     290,
-    "Upper elevator stop in the demo.",
+    "Upper elevator stop on this map.",
   ),
   place(
     "b2",
@@ -117,7 +117,7 @@ export const nodes: Place[] = [
     "classroom",
     240,
     320,
-    "Fictional destination. Door width, seating and classroom access are unverified.",
+    "Destination. Door width, seating and classroom access are unverified.",
   ),
 ];
 const links: [string, string, number, number, boolean?][] = [

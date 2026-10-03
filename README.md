@@ -1,59 +1,84 @@
 # Aiu2
 
-A campus accessibility companion: choose your needs, compare routes, inspect places and contribute observations. **Prompts 1–2 / app-first routing demo.** This is a fictional two-floor demo, not a verified campus navigation service.
+Campus journey planning with personal preferences, route tradeoffs, community observations and local sensor conditions. Prompts 1–3 implemented. The two-floor map is illustrative; access measurements remain unverified.
 
-## Run locally
+## Run
 
-Node.js 22.13+ and npm are recommended.
+Use Node.js 22.13+ (built-in `node:sqlite`) and npm. No hosted database account is needed.
 
 ```sh
 npm ci
 npm run dev
 ```
 
-Open http://localhost:3000. No credentials are needed. For production: `npm run build` then `npm start`. Run `npm test` for routing checks and `npm run typecheck` for TypeScript.
+Open http://localhost:3000. Production: `npm run build` then `npm start`. SQLite automatically creates `data/aiu2.sqlite` on the first API request. Keep this directory on persistent disk. This adapter is for one Node server, not an ephemeral or multi-instance serverless deployment.
 
-## What works
+## Features
 
-- Responsive journey planner with functional preferences, start/destination selection, clickable two-floor SVG map, location details and equivalent ordered text directions.
-- 12 map places and 25 explicit directed edges. Elevator A, Elevator B, stairs, an automatic entrance, resting bench, restroom and classroom. A map place is not a hardware device.
-- Deterministic Dijkstra routing with configurable nonnegative costs. No-stairs and minimum-known-width constraints, closures, travel and walking costs, optional resting preference, and deduplicated route options. All distances/times are demo estimates; width, slope, surface and lighting are unknown.
-- One sensor zone reserved at `elevator-a-lobby` for `beacon-a`. `/conditions` honestly shows no connection and unknown readings.
-- Preferences and up to 50 pending observations persist in this browser's local storage. Reports include source, contributor and timestamp. They do not change the graph.
-- Visible keyboard focus, labeled native form controls, large targets, reduced-motion support and text alternatives to map interactions.
+- 12 map locations and 25 directed paths across two floors, with text directions and keyboard controls.
+- Dijkstra routing with hard stairs, closure and known-width constraints. Configurable nonnegative soft weights for travel, walking, activity, lighting, surfaces and rest opportunities; identical options collapse.
+- The selected journey remains unchanged when conditions change. A new route offer explains its distance/time tradeoff; the traveler accepts or declines it.
+- Reports and preferences persist in SQLite. An anonymous HttpOnly session cookie scopes them to the browser; no medical identity or account is required. Reports remain pending and never change route access automatically. The interface shows the latest 50 reports belonging to that session. Clearing the cookie loses access to that session's records; this is not cross-device account sync or a moderation portal.
+- Authenticated sensor ingestion, durable deduplication, recent readings and source attribution.
+- A compact conditions panel and separate `/conditions` view poll the real API. Source mode is retained and shown there. There are no fabricated readings when the sensor is absent.
 
-The planner has a clearly labeled activity simulator: raise or clear activity at Elevator A, wait for three consecutive one-second summaries, and accept or decline a route offer. Disconnecting the simulated feed becomes unknown after five seconds. Map and text directions retain the selected journey until the traveler changes it. Lighting and surface preferences apply only to recorded attributes; the seed has neither measurement. The interface does not claim a route is quiet or bright. When direct and preferred paths match, only one card appears; choose “Prefer resting points” to compare the bench route with the direct elevator route.
+## Sensor configuration
 
-## What is next
+Copy `.env.example` to `.env.local`. Set `AIU2_INGEST_TOKEN` to a randomly generated secret of at least 24 characters. Keep it on the server and laptop bridge, never in browser JavaScript. Ingestion returns 503 until configured and 401 for incorrect authentication.
 
-1. Confirm actual board and ultrasonic module labels before firmware/wiring.
-2. Add server persistence for shared reports, validation and a controlled review action.
-3. Add authenticated sensor ingestion, serial bridge, smoothing, deduplication and five-second stale detection. Connect the single physical sensor and prove its readings affect an offered route. Never switch an active journey without acceptance.
-4. Add explicit pairing, short-lived commands and controller acknowledgements.
-5. Add one reviewed AI feature, preferably IBM needs interpretation or report drafting after event eligibility and access are confirmed.
+- `AIU2_DB_PATH`: optional database filename; defaults to `data/aiu2.sqlite`.
+- `AIU2_FOREGROUND_CM`: positive foreground threshold in centimetres, defaults to 30. Calibrate against the actual sensor geometry.
+- `AIU2_SECURE_COOKIES=true`: use when hosting over HTTPS. Local HTTP development leaves this unset.
+- `AIU2_API_URL`: used by the development reading sender; defaults to http://127.0.0.1:3003.
 
-No AI provider, database, sensor ingestion, USB bridge, two-way commands, authentication or hosted app is connected. Simulated activity is explicitly labeled and does not represent physical hardware. The dashboard remains a disconnected hardware view; the interactive scenario controls live in the planner. The original project brief describes later stages; those embedded prompts are a roadmap, not completed features.
+IBM and serial placeholders are reserved for later stages. No Tiger Data connection or other external service is used. Tiger Data would be appropriate later for centrally hosted reports/preferences and sensor history when multiple app instances or team devices need the same database.
 
-## Configuration
+## API contract
 
-`.env.example` reserves empty, server-only placeholders for future integration. Copy to `.env.local` only when needed; never expose values with `NEXT_PUBLIC_` or commit secrets. The scaffold does not read these values yet. IBM will need key, project, regional URL and available model. The bridge will need a dedicated ingest token and the confirmed serial port. Database choice remains open.
+`POST /api/sensors/ingest` requires `Authorization: Bearer <AIU2_INGEST_TOKEN>` and JSON:
 
-## Team workflow
+```json
+{
+  "deviceId": "beacon-a",
+  "zoneId": "elevator-a-lobby",
+  "bridgeSessionId": "unique-per-bridge-start",
+  "sequence": 42,
+  "sourceMode": "hardware",
+  "distanceCm": 18.4,
+  "validDistance": true
+}
+```
 
-- Read `AGENTS.md`; use feature branches and small pull requests.
-- Shared contracts: `lib/types.ts`; seed graph: `lib/demo.ts`; routes: `lib/routing.ts`; screens: `app/` and `components/`.
-- Run `npm test` and `npm run build` before merging. GitHub Actions repeats both on pushes and pull requests.
-- Suggested workstreams: interface/map; routing/data review; hardware/bridge; backend/persistence; IBM/demo coordination.
-- Owner can invite teammates from repository Settings → Collaborators. Public visibility allows reading, not push access.
+Use `simulation` or `replay` for generated or recorded events. Invalid echoes use `validDistance:false` and `distanceCm:null`; they are not evidence of empty space. Send raw readings around 5 Hz for the filter. Sequence is a nonnegative integer; bridge sessions must change after a restart. The server assigns UTC receipt time and ignores client timestamps. `(deviceId, bridgeSessionId, sequence)` deduplicates across restarts of the application; retries return the original event and do not refresh freshness or add samples. Accepted events are retained locally; sensor history analytics and retention tooling are not added.
 
-## Demo walkthrough
+- `GET /api/conditions`: latest condition, quality, median distance, occupied fraction and ten recent samples. Fresh hardware takes priority; windows are isolated by source mode.
+- `GET /api/preferences`, `PUT /api/preferences`: session-scoped profile. PUT needs an Origin matching the app URL.
+- `GET /api/reports`, `POST /api/reports`: session-scoped pending observations. POST validates location/type/text and assigns source, ID, timestamp and pending status on the server. Origin must match; a session can submit at most ten reports per minute.
+- `GET /api/health`: SQLite readiness and whether ingestion authentication is configured; no secrets.
 
-Select Automatic entrance → Classroom 201 with Avoid stairs. Inspect both floors and expand the text directions. Enable Prefer resting points and compare the longer Elevator B route with the direct Elevator A route. Enter a required width to see that unknown measurements cannot meet it. Clear the width, save an observation and reload to verify local persistence. Open Live conditions to see the single planned device and honest disconnected state.
+## Signal interpretation
 
-The map is not to scale; elevator service is not verified. There is no indoor positioning or automatic recognition of users. Local reports are device-local and not submitted to campus staff. Access constraints are checked against fictional data and do not certify a real journey.
+The last ten seconds of readings form an occupied-fraction window. A three-valid-sample sliding median removes isolated echoes before thresholding. The panel also exposes a median of the latest five valid distances. Clear is below 20% occupied, some activity is 20–60%, and sustained is above 60%. These are tunable prototype heuristics, not a people count or validated crowd estimate.
 
-## Judge demo for route changes
+At least three valid samples, at least 60% valid quality and a valid echo within five seconds are required. Otherwise activity becomes unknown immediately. A state change requires three consecutive classifications, at most once per second. A gap over five seconds resets smoothing; stale reads return unknown even if no new event arrives. Invalid echoes lower quality rather than counting as clear. Source modes never share a classification window.
 
-Click **Reset demo**, then **Raise lobby activity**. After three updates, the route offer shows Elevator B avoiding the simulated active zone, adding 24 metres and 31 seconds. The map still follows Elevator A until **Use this route** is clicked. **Keep my route** dismisses the offer. Clear the lobby to offer the shorter route again, or disconnect the feed to demonstrate unknown activity after five seconds. This is a UI scenario simulator, not the future raw-distance filtering/USB ingestion pipeline.
+## Repeatable development demonstration
 
-`DEFAULT_WEIGHTS` in `lib/routing.ts` configures time, walking, activity, dim lighting, rough/gravel surfaces and missing resting opportunities. These are demo heuristics, not clinically validated scores. A `now` option makes freshness deterministic in tests. Confirmed closures are represented by `Edge.closed`; pending community reports never set this flag. Unknown widths cannot meet a required minimum. Unknown lighting/surface/activity earns no favorable claim.
+Generate readings through the same authenticated endpoint and processing path used by a future bridge:
+
+```sh
+# Match the running server URL in AIU2_API_URL if not using port 3003.
+node --env-file=.env.local scripts/send-readings.mjs 20 15
+# Then show object removal:
+node --env-file=.env.local scripts/send-readings.mjs 60 15
+```
+
+The sender always labels data `simulation`. Select Avoid stairs and Prefer quieter areas for the Automatic entrance → Classroom 201 journey. Once sustained activity is confirmed, Elevator B is offered with 24 additional metres and 31 additional seconds. Accept to switch directions. Stop the sender and observe unknown activity after five seconds. Clearing a full busy window takes approximately ten seconds plus confirmation; do not expect an instantaneous return to clear.
+
+## Verification and limitations
+
+Run `npm test` and `npm run build`. Focused tests cover routing, smoothing, invalid echoes, stale reads, retry deduplication, source isolation and reopening SQLite to prove persistence. A real HTTP smoke check covers authorization, ingestion, report/profile persistence and stale status using generated input. This does not prove physical hardware operation.
+
+No serial board was detected during this stage. Physical ingestion still requires the actual board and sensor labels, firmware and a USB bridge. AI, two-way commands, moderation, account sync and production hosting remain future work. No elevator operation, continuous indoor location or safety certification is inferred from sensor activity.
+
+Read `AGENTS.md` before contributing. Shared types live in `lib/types.ts`; storage in `lib/storage.ts`; signal processing in `lib/sensor-processing.ts`; routing in `lib/routing.ts`. GitHub Actions runs tests and build. Use small branches/PRs and prioritize an intuitive judge presentation.

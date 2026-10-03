@@ -5,7 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Aiu2 · Find your way",
   description:
-    "An accessible campus journey planner. Clearly labeled two-floor demonstration.",
+    "An accessible campus journey planner. Personal route choices and local conditions.",
 };
 export default function Layout({
   children,
@@ -29,7 +29,7 @@ export default function Layout({
               Live conditions <ArrowUpRight size={14} />
             </Link>
           </nav>
-          <span className="demo-pill">DEMO CAMPUS</span>
+          <span className="demo-pill">CAMPUS COMPANION</span>
         </header>
         {children}
         <footer>

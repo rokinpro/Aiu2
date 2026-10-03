@@ -15,7 +15,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { graph, nodes, defaultProfile } from "@/lib/demo";
-import { useDemoCondition } from "./use-demo-condition";
+import { useLiveConditions } from "./use-live-conditions";
+import ConditionsPanel from "./conditions-panel";
 import { findRoute, routeChoices } from "@/lib/routing";
 import type { Profile, ReportPayload, Route } from "@/lib/types";
 const labels: [keyof Omit<Profile, "minWidthCm">, string, React.ReactNode][] = [
@@ -36,43 +37,64 @@ export default function Planner() {
   const [reports, setReports] = useState<ReportPayload[]>([]);
   const [status, setStatus] = useState("");
   const [loaded, setLoaded] = useState(false);
-  const demo = useDemoCondition();
+  const demo = useLiveConditions();
+  const [saving, setSaving] = useState(false);
+  const [preferenceStatus, setPreferenceStatus] = useState(
+    "Loading preferences…",
+  );
   const [dismissed, setDismissed] = useState("");
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem("aiu2-profile") || "null");
-      if (
-        saved &&
-        labels.every(
-          ([key]) => key === "smoother" || typeof saved[key] === "boolean",
-        ) &&
-        (saved.minWidthCm === null ||
-          (typeof saved.minWidthCm === "number" && saved.minWidthCm > 0))
-      )
-        setProfile({
-          ...defaultProfile,
-          ...saved,
-          smoother: saved.smoother === true,
-        });
-      const items = JSON.parse(localStorage.getItem("aiu2-reports") || "[]");
-      if (Array.isArray(items))
-        setReports(
-          items.filter(
-            (r) =>
-              r &&
-              typeof r.details === "string" &&
-              typeof r.reportedAt === "string" &&
-              nodes.some((n) => n.id === r.placeId),
-          ),
-        );
-    } catch {}
-    setLoaded(true);
+    let active = true;
+    async function load() {
+      try {
+        const profileResponse = await fetch("/api/preferences");
+        if (!profileResponse.ok) throw new Error();
+        const profileData = await profileResponse.json();
+        if (!active) return;
+        if (profileData.profile) {
+          setProfile(profileData.profile);
+          setSelected(null);
+        }
+        setLoaded(true);
+        setPreferenceStatus("Preferences saved for your browser session.");
+        const reportResponse = await fetch("/api/reports");
+        if (!reportResponse.ok) throw new Error();
+        const data = await reportResponse.json();
+        if (active) setReports(data.reports);
+      } catch {
+        if (active)
+          setPreferenceStatus("Storage unavailable. Changes are not saved.");
+      }
+    }
+    void load();
+    return () => {
+      active = false;
+    };
   }, []);
   useEffect(() => {
-    if (loaded)
+    if (!loaded) return;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
       try {
-        localStorage.setItem("aiu2-profile", JSON.stringify(profile));
-      } catch {}
+        const response = await fetch("/api/preferences", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(profile),
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error();
+        setPreferenceStatus("Preferences saved for your browser session.");
+      } catch {
+        if (!controller.signal.aborted)
+          setPreferenceStatus(
+            "Could not save preferences. Please try another change.",
+          );
+      }
+    }, 350);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [profile, loaded]);
   const computed = routeChoices(
     graph,
@@ -101,20 +123,9 @@ export default function Planner() {
   const suggestion =
     active && computed[0]?.id !== active.id ? computed[0] : null;
   const offerKey = `${suggestion?.id}-${demo.activity}`;
-  function changeDemo(mode: Parameters<typeof demo.changeMode>[0]) {
-    setSelected(active ?? null);
-    setDismissed("");
-    demo.changeMode(mode);
-  }
-  function resetDemo() {
-    setProfile(defaultProfile);
-    setStart("entrance");
-    setDestination("classroom");
-    setFloor(1);
-    setSelected(null);
-    setDismissed("");
-    demo.changeMode("off");
-  }
+  useEffect(() => {
+    if (!selected && active) setSelected(active);
+  }, [selected, active]);
   const location = nodes.find((n) => n.id === place)!;
   function update(key: keyof Profile, value: boolean | number | null) {
     setProfile((p) => ({ ...p, [key]: value }));
@@ -140,70 +151,13 @@ export default function Planner() {
           </p>
         </div>
         <span className="building-label">
-          <MapPin size={17} /> Demo building <span>· 2 floors</span>
+          <MapPin size={17} /> Campus building <span>· 2 floors</span>
         </span>
       </div>
-      <div className="notice">
-        <Info size={18} />
-        <p>
-          <strong>A small map. A starting point.</strong> This is a fictional
-          campus demo. Locations, distances and route times are illustrative;
-          access measurements are unverified.
-        </p>
-      </div>
-      <section
-        className="demo-controls"
-        aria-label="Interactive route demonstration"
-      >
-        <div className="demo-intro">
-          <span className="demo-label">INTERACTIVE DEMO · SIMULATED</span>
-          <h2>See your route respond.</h2>
-          <p>One lobby changes. You stay in control.</p>
-        </div>
-        <div className="demo-actions">
-          <button
-            disabled={demo.mode === "busy"}
-            onClick={() => changeDemo("busy")}
-          >
-            ① Raise lobby activity
-          </button>
-          <button
-            disabled={demo.mode === "clear"}
-            onClick={() => changeDemo("clear")}
-          >
-            ② Clear the lobby
-          </button>
-          <button
-            disabled={demo.mode === "off" || demo.mode === "disconnected"}
-            onClick={() => changeDemo("disconnected")}
-          >
-            Disconnect feed
-          </button>
-          <button className="reset-demo" onClick={resetDemo}>
-            Reset demo
-          </button>
-        </div>
-        <div className="demo-reading" role="status">
-          <span className={`activity-light ${demo.activity}`} />
-          <strong>
-            {demo.activity === "unknown"
-              ? "Activity unknown"
-              : demo.activity === "sustained"
-                ? "Sustained activity near Elevator A"
-                : "Demo lobby clear"}
-          </strong>
-          <span>
-            {(demo.mode === "busy" || demo.mode === "clear") &&
-            demo.progress < 3
-              ? `Confirming change · ${demo.progress}/3 updates`
-              : demo.mode === "disconnected"
-                ? "Feed stopped · unknown after 5 seconds"
-                : demo.mode === "off"
-                  ? "Choose a scenario to begin"
-                  : "Simulated readings · not physical hardware"}
-          </span>
-        </div>
-      </section>
+      <p className="map-disclosure">
+        Illustrative map · access measurements are unverified.
+      </p>
+      <ConditionsPanel compact />
       <div className="workspace">
         <aside className="panel preferences">
           <div className="section-title">
@@ -289,7 +243,7 @@ export default function Planner() {
             </p>
           </details>
           <p className="local-note">
-            <Check size={14} /> Preferences stay on this browser.
+            <Check size={14} /> {preferenceStatus}
           </p>
         </aside>
         <section className="map-column">
@@ -316,7 +270,7 @@ export default function Planner() {
                   : `${active.distanceM - suggestion.distanceM} m less`}{" "}
                 walking, {Math.abs(suggestion.seconds - active.seconds)} seconds{" "}
                 {suggestion.seconds >= active.seconds ? "longer" : "shorter"} in
-                this demo.
+                estimated travel time.
               </p>
               <p className="small">
                 Your map and directions still follow{" "}
@@ -492,7 +446,7 @@ export default function Planner() {
                     </g>
                   ))}
               </svg>
-              <span className="map-stamp">AIU2 / DEMO MAP</span>
+              <span className="map-stamp">AIU2 / CAMPUS MAP</span>
             </div>
             <div className="map-legend">
               <span>
@@ -501,7 +455,7 @@ export default function Planner() {
               <span>
                 <i className="legend-dot" /> Place or landmark
               </span>
-              <span>12 places · 1 planned sensor</span>
+              <span>12 places · 1 sensor zone</span>
             </div>
           </div>
           <div className="routes-title">
@@ -578,7 +532,7 @@ export default function Planner() {
                       <li key={e.id}>
                         {a.floor !== b.floor
                           ? `Take ${a.kind === "stairs" ? "the stairs" : a.name.split(" · ")[0]} to floor ${b.floor}.`
-                          : `From ${a.name}, continue ${e.lengthM} demo metres to ${b.name}.`}
+                          : `From ${a.name}, continue ${e.lengthM} metres to ${b.name}.`}
                       </li>
                     );
                   })}
@@ -615,7 +569,7 @@ export default function Planner() {
             </div>
             <h2>{location.name}</h2>
             <p className="small muted">
-              Floor {location.floor} · Demo location
+              Floor {location.floor} · Unverified location
             </p>
             <p>{location.notes}</p>
             <dl>
@@ -629,7 +583,7 @@ export default function Planner() {
               </div>
               <div>
                 <dt>Source</dt>
-                <dd>Demo seed</dd>
+                <dd>Map seed</dd>
               </div>
               <div>
                 <dt>Last verified</dt>
@@ -639,10 +593,11 @@ export default function Planner() {
             {place === "a1" && (
               <div className="sensor-note">
                 <span className="status-dot" />
-                <strong>Physical sensor not connected</strong>
+                <strong>Local activity: {demo.activity}</strong>
                 <p className="small">
-                  One planned device. Live activity is unknown; the controls
-                  above use simulation.
+                  {demo.condition
+                    ? `Source: ${demo.condition.sourceMode}`
+                    : "Awaiting sensor readings."}
                 </p>
               </div>
             )}
@@ -669,15 +624,16 @@ export default function Planner() {
             observations can make the next journey easier.
           </p>
           <p className="small muted">
-            Demo reports are saved only in this browser, pending review. They do
-            not change route access.
+            Observations are saved on the server for your browser session,
+            pending review. They do not change route access.
           </p>
           <Flag size={30} />
         </div>
         <form
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            const data = new FormData(e.currentTarget);
+            const form = e.currentTarget;
+            const data = new FormData(form);
             const details = String(data.get("details")).trim();
             if (!details) {
               setStatus("Please describe your observation.");
@@ -695,16 +651,29 @@ export default function Planner() {
               reportedAt: new Date().toISOString(),
               reviewStatus: "pending",
             };
+            setSaving(true);
             try {
-              const next = [report, ...reports].slice(0, 50);
-              localStorage.setItem("aiu2-reports", JSON.stringify(next));
-              setReports(next);
-              setStatus("Observation saved on this browser. Pending review.");
-              e.currentTarget.reset();
-            } catch {
-              setStatus(
-                "Unable to save. Browser storage may be full or disabled.",
+              const response = await fetch("/api/reports", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(report),
+              });
+              const result = await response.json();
+              if (!response.ok)
+                throw new Error(result.error || "Could not save observation.");
+              setReports((previous) =>
+                [result.report, ...previous].slice(0, 50),
               );
+              setStatus("Observation saved. Pending review.");
+              form.reset();
+            } catch (error) {
+              setStatus(
+                error instanceof Error
+                  ? error.message
+                  : "Unable to save. Please try again.",
+              );
+            } finally {
+              setSaving(false);
             }
           }}
         >
@@ -748,8 +717,8 @@ export default function Planner() {
                 placeholder="Anonymous contributor"
               />
             </label>
-            <button className="primary" type="submit">
-              Save observation <ArrowRight size={17} />
+            <button className="primary" type="submit" disabled={saving}>
+              {saving ? "Saving…" : "Save observation"} <ArrowRight size={17} />
             </button>
           </div>
           <p role="status" className="small">
@@ -759,7 +728,7 @@ export default function Planner() {
       </section>
       {reports.length > 0 && (
         <section className="panel saved-reports">
-          <h2>Your local observations</h2>
+          <h2>Your observations</h2>
           {reports.map((r) => (
             <article key={r.id}>
               <strong>

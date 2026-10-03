@@ -1,20 +1,11 @@
 # Build status
 
-The complete supplied brief was reviewed. Prompts 1 and 2 are implemented. Later hardware, persistence and provider stages remain future work.
+Prompts 1–3 implemented: accessible interface, deterministic routing, authenticated ingestion, SQLite persistence and recent conditions.
 
-## Architectural decisions
+The website uses concise map uncertainty and source attribution in the conditions panel instead of repeated demo banners. Unknown measurements remain null. Reports stay pending and cannot alter the graph.
 
-- Keep a 12-place graph for meaningful route comparisons; reserve exactly one physical sensor location. Graph places do not imply sensor purchases.
-- Use a schematic SVG instead of external indoor maps or map credentials.
-- Implement enough routing to make the interface functional now. Prefer transparent facts over an accessibility score.
-- Use local browser storage explicitly for the initial interface. Shared persistence needs a server adapter in the next stage.
-- Keep the physical dashboard separate from traveler controls. Unknown is the initial sensor state.
-- Do not connect optional sponsors or write hardware-specific firmware in this stage. Simulated activity must be clearly labeled and never called physical hardware.
+SQLite is the chosen local adapter. Reports and preferences are isolated by anonymous browser session. Sensor events retain their original raw values, server receipt time, device, bridge session, sequence and source mode. Retries do not change freshness. No Tiger Data service or credentials are required.
 
-## Verification
+Verification uses focused unit tests, production build and a brief real-HTTP/browser check. Tests using generated sensor payloads are not physical hardware verification. No USB serial board was visible during this stage. The next hardware step needs confirmed board/sensor models, firmware and a USB serial bridge.
 
-Production build and routing unit tests are required by CI. Browser QA covers controls, local observation persistence, floor selection, empty-route state, conditions navigation and mobile overflow. Synthetic conditions in unit tests are not physical hardware verification.
-
-## Needed from the team for the next stage
-
-Exact board and sensor model labels; one hardware owner; selected real pilot area if available; IBM event access and permitted model (keys through local environment only). None block the current scaffold.
+For deployment, retain the SQLite file on persistent disk with one app instance, or intentionally migrate the storage adapter. Tiger Data is an option for shared hosted data and history at that point.
