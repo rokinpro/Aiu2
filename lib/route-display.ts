@@ -1,4 +1,4 @@
-import type { Route } from "./types";
+import type { Profile, Route } from "./types";
 
 export type RouteCatalog = { journeyKey: string; routes: Route[] };
 
@@ -16,4 +16,24 @@ export function collectRouteOptions(
   return added.length
     ? { journeyKey, routes: [...previous.routes, ...added] }
     : previous;
+}
+
+// Card copy is based on the chosen path, never the live sensor state. The
+// separate conditions panel carries changing activity and source status.
+export function routeCardFacts(route: Route, profile: Profile): string[] {
+  const zones = new Set(route.edges.map((edge) => edge.zoneId));
+  const facts: string[] = [];
+  if (zones.has("elevator-a-lobby")) facts.push("Via Elevator A lobby");
+  if (zones.has("elevator-b-lobby")) facts.push("Via Elevator B lobby");
+  if (profile.minWidthCm !== null && route.edges.length)
+    facts.push(`Recorded widths meet your ${profile.minWidthCm} cm minimum`);
+  const unknowns = [
+    route.edges.some((edge) => edge.widthCm === null) && "widths",
+    route.edges.some((edge) => edge.slopePercent === null) && "slopes",
+    route.edges.some((edge) => edge.lighting === null) && "lighting",
+    route.edges.some((edge) => edge.surface === null) && "surfaces",
+  ].filter(Boolean);
+  if (unknowns.length)
+    facts.push(`Unknown ${unknowns.join(", ")}; route access is not certified`);
+  return facts;
 }

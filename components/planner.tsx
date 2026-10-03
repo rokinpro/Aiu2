@@ -22,7 +22,7 @@ import NodePairing from "./node-pairing";
 import PhotoAssist from "./photo-assist";
 import { findRoute, routeChoices } from "@/lib/routing";
 import { currentActivity } from "@/lib/conditions";
-import { collectRouteOptions, type RouteCatalog } from "@/lib/route-display";
+import { collectRouteOptions, routeCardFacts, type RouteCatalog } from "@/lib/route-display";
 import type { Profile, ReportPayload, Route, PreferenceSuggestion } from "@/lib/types";
 const labels: [keyof Omit<Profile, "minWidthCm">, string, React.ReactNode][] = [
   ["noStairs", "Avoid stairs", <Accessibility key="a" size={18} />],
@@ -53,6 +53,7 @@ export default function Planner() {
   const [dismissed, setDismissed] = useState("");
   const [routeCatalog, setRouteCatalog] = useState<RouteCatalog>({ journeyKey: "", routes: [] });
   const [recommended, setRecommended] = useState({ journeyKey: "", id: "" });
+  const [offered, setOffered] = useState({ journeyKey: "", id: "" });
   const [needsText, setNeedsText] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [aiStatus, setAiStatus] = useState("");
@@ -159,8 +160,14 @@ export default function Planner() {
     const timer = setTimeout(() => setRecommended({ journeyKey, id: candidateId }), 3000);
     return () => clearTimeout(timer);
   }, [journeyKey, candidateId, recommended]);
-  const suggestion = recommended.journeyKey === journeyKey && active?.id !== recommended.id
-    ? choices.find((route) => route.id === recommended.id) ?? null
+  useEffect(() => {
+    if (recommended.journeyKey === journeyKey && recommended.id &&
+      active && recommended.id !== active.id)
+      setOffered((previous) => previous.journeyKey === journeyKey && previous.id === recommended.id
+        ? previous : { journeyKey, id: recommended.id });
+  }, [journeyKey, recommended, active]);
+  const suggestion = offered.journeyKey === journeyKey && active?.id !== offered.id
+    ? choices.find((route) => route.id === offered.id) ?? null
     : null;
   const offerKey = `${journeyKey}:${suggestion?.id}`;
   useEffect(() => {
@@ -520,16 +527,15 @@ export default function Planner() {
                   aria-pressed={active?.id === r.id}
                   onClick={() => {
                     setSelected(r);
-                    setDismissed("");
+                    if (offered.journeyKey === journeyKey && offered.id === r.id)
+                      setDismissed(`${journeyKey}:${r.id}`);
                   }}
                 >
                   <div className="route-top">
                     <span className="route-tag">
                       {active?.id === r.id
                         ? "YOUR SELECTED ROUTE"
-                        : recommended.journeyKey === journeyKey && recommended.id === r.id
-                          ? "SUGGESTED FIT"
-                          : "ALTERNATE ROUTE"}
+                        : "ALTERNATE ROUTE"}
                     </span>
                     <span className="radio-dot">
                       {active?.id === r.id && <Check size={13} />}
@@ -546,7 +552,7 @@ export default function Planner() {
                     {r.hasBench ? " · Resting bench on the way" : ""}
                   </p>
                   <div className="route-reasons">
-                    {r.reasons.map((reason) => (
+                    {routeCardFacts(r, profile).map((reason) => (
                       <p key={reason}>{reason}</p>
                     ))}
                   </div>
@@ -560,7 +566,7 @@ export default function Planner() {
               aria-label="Suggested route change"
               aria-live="polite"
             >
-              <span className="demo-label">A NEW OPTION · YOUR CHOICE</span>
+              <span className="demo-label">ANOTHER OPTION · YOUR CHOICE</span>
               <h2>A different route is available.</h2>
               <p>
                 {routeName(suggestion)} is another way to reach your destination. {" "}
@@ -580,7 +586,7 @@ export default function Planner() {
                   className="primary"
                   onClick={() => {
                     setSelected(suggestion);
-                    setDismissed("");
+                    setDismissed(offerKey);
                   }}
                 >
                   Use this route <ArrowRight size={17} />

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { graph, defaultProfile } from "../lib/demo";
 import { routeChoices } from "../lib/routing";
-import { collectRouteOptions } from "../lib/route-display";
+import { collectRouteOptions, routeCardFacts } from "../lib/route-display";
 import type { Condition } from "../lib/types";
 
 test("route cards keep their order through changing sensor activity", () => {
@@ -21,4 +21,9 @@ test("route cards keep their order through changing sensor activity", () => {
   assert.deepEqual(catalog.routes.map((route) => route.id), [clear[0].id, busy[0].id]);
   assert.equal(collectRouteOptions(catalog, key, clear), catalog);
   assert.deepEqual(collectRouteOptions(catalog, "new journey", clear).routes, clear);
+  const clearFacts = routeCardFacts(clear[0], defaultProfile);
+  const busyFacts = routeCardFacts(busy.find((route) => route.id === clear[0].id)!, defaultProfile);
+  assert.deepEqual(clearFacts, busyFacts);
+  assert.ok(clearFacts.some((fact) => fact.includes("Unknown widths")));
+  assert.ok(clearFacts.every((fact) => !fact.includes("activity")));
 });
