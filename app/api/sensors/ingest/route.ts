@@ -18,6 +18,9 @@ export async function POST(request: Request) {
   } catch {
     return badRequest();
   }
-  const result = getStore().ingest(input);
+  const store = getStore();
+  const result = store.ingest(input);
+  if (!result.duplicate && input.deviceId === "beacon-a" && input.sourceMode === "hardware")
+    store.queueOnApproach();
   return Response.json(result, { status: result.duplicate ? 200 : 201 });
 }

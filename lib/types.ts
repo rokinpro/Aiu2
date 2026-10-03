@@ -103,3 +103,31 @@ export type PreferenceSuggestion = {
   key: keyof Omit<Profile, "minWidthCm">;
   evidence: string;
 };
+export type OutputChoice = "text" | "speech";
+export type PairedSession = {
+  id: string;
+  nodeId: "beacon-a";
+  profileSlot: "A" | "B";
+  profile: Profile;
+  destination: string;
+  outputChoice: OutputChoice;
+  expiresAt: string;
+};
+export type NodeCommand = {
+  id: string;
+  pairingId: string;
+  nodeId: "beacon-a";
+  code: "AT_DESTINATION" | "GO_TO_HALL" | "USE_ELEVATOR_A" | "USE_ELEVATOR_B" | "USE_STAIRS" | "CONTINUE";
+  routeId: string;
+  createdAt: string;
+  expiresAt: string;
+  controllerStatus: "queued" | "received" | "rejected";
+  acknowledgedAt: string | null;
+  actuatorExecuted: false;
+};
+export type PhoneGuidance = {
+  headline: string;
+  detail: string;
+  routeId: string | null;
+  textDirections: string[];
+};

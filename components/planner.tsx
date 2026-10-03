@@ -18,6 +18,7 @@ import {
 import { graph, nodes, defaultProfile } from "@/lib/demo";
 import { useLiveConditions } from "./use-live-conditions";
 import ConditionsPanel from "./conditions-panel";
+import NodePairing from "./node-pairing";
 import { findRoute, routeChoices } from "@/lib/routing";
 import type { Profile, ReportPayload, Route, PreferenceSuggestion } from "@/lib/types";
 const labels: [keyof Omit<Profile, "minWidthCm">, string, React.ReactNode][] = [
@@ -164,6 +165,7 @@ export default function Planner() {
         Illustrative map · access measurements are unverified.
       </p>
       <ConditionsPanel compact />
+      <NodePairing />
       <div className="workspace">
         <aside className="panel preferences">
           <div className="section-title">

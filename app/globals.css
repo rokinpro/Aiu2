@@ -1008,3 +1008,44 @@ footer {
 .sensor-zone-list strong { font-size: 13px; }
 .sensor-zone-list span { font-size: 12px; color: #56685b; text-transform: capitalize; }
 @media (max-width: 600px) { .sensor-zone-list { grid-template-columns: 1fr; } }
+.node-pairing { margin: 0 0 25px; overflow: hidden; border: 1px solid #a8cbbb; border-radius: 15px; background: #fff; box-shadow: 0 10px 36px rgba(26, 79, 58, .06); }
+.node-pairing-heading { display: flex; gap: 17px; align-items: center; padding: 22px 25px; color: #f9fbf6; background: linear-gradient(115deg, #164e42, #2d725c 68%, #5c825b); }
+.node-pairing-heading .eyebrow { color: #b9e3cc; margin-bottom: 3px; }
+.node-pairing-heading h2 { font-size: 22px; line-height: 1.25; }
+.node-pairing-heading p:last-child { margin-top: 5px; color: #e0eee4; font-size: 12px; }
+.node-emblem { width: 48px; height: 48px; flex: 0 0 48px; display: grid; place-items: center; border: 1px solid #a2ccb3; border-radius: 12px; background: rgba(255, 255, 255, .12); }
+.node-presence { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; padding: 7px 11px; border: 1px solid #c6e4cf; border-radius: 20px; white-space: nowrap; font-size: 11px; font-weight: 700; }
+.node-pairing-body { display: grid; grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr); }
+.node-profile-editor, .node-guidance { padding: 23px 25px; }
+.node-profile-editor { border-right: 1px solid #e0e8df; }
+.node-tabs { display: flex; gap: 9px; margin-bottom: 9px; }
+.node-tabs button { flex: 1; border: 1px solid #b9cbbd; border-radius: 8px; background: #fff; font-weight: 700; }
+.node-tabs button[aria-pressed="true"] { background: #175e4d; border-color: #175e4d; color: #fff; }
+.node-profile-editor > .small { margin-bottom: 17px; }
+.node-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 15px; margin: 4px 0 16px; }
+.node-choice { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 12px; cursor: pointer; }
+.node-choice input { width: 17px; height: 17px; accent-color: #175e4d; }
+.node-pair-actions { display: flex; gap: 10px; align-items: end; }
+.node-pair-actions .field { flex: 1; margin-bottom: 0; }
+.node-pair-actions .primary { min-height: 44px; white-space: nowrap; }
+.node-pair-actions button:disabled, .node-guidance button:disabled { opacity: .55; cursor: not-allowed; }
+.node-guidance { background: #f7faf5; display: flex; flex-direction: column; }
+.node-guidance-top { display: flex; justify-content: space-between; gap: 12px; align-items: center; color: #55725e; font-size: 12px; margin-bottom: 21px; }
+.node-connected { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; }
+.node-guidance h3 { font-size: 20px; line-height: 1.25; margin-bottom: 8px; }
+.node-guidance > p { color: #56695c; font-size: 13px; }
+.node-guidance ol { margin: 15px 0 0; padding-left: 21px; font-size: 13px; }
+.node-guidance li { margin: 7px 0; }
+.node-speak { display: inline-flex; align-items: center; align-self: flex-start; gap: 8px; padding: 9px 13px; margin-top: 15px; background: #e7f3e9; border: 1px solid #a7c8b1; border-radius: 8px; font-size: 12px; font-weight: 700; }
+.controller-status { display: flex; align-items: flex-start; gap: 10px; border-top: 1px solid #dce8db; margin-top: auto; padding-top: 18px; color: #245d49; }
+.controller-status strong, .controller-status small { display: block; }
+.controller-status strong { font-size: 12px; }
+.controller-status small { color: #66756c; font-size: 11px; margin-top: 3px; }
+.node-disconnect { align-self: flex-start; margin-top: 14px; padding: 8px 0; border: 0; background: transparent; text-decoration: underline; font-size: 12px; }
+.node-empty { margin: auto; max-width: 290px; text-align: center; color: #496452; }
+.node-empty svg { margin: 0 auto 10px; }
+.node-empty h3 { font-size: 20px; }
+.node-empty p { font-size: 13px; margin-top: 9px; }
+.node-message { margin-top: 12px; color: #245d49; }
+@media (max-width: 800px) { .node-pairing-body { grid-template-columns: 1fr; } .node-profile-editor { border-right: 0; border-bottom: 1px solid #e0e8df; } .node-guidance { min-height: 280px; } }
+@media (max-width: 520px) { .node-pairing-heading { padding: 19px; flex-wrap: wrap; } .node-pairing-heading h2 { font-size: 19px; } .node-presence { margin-left: 0; } .node-profile-editor, .node-guidance { padding: 20px; } .node-choice-grid { grid-template-columns: 1fr; } .node-pair-actions { flex-direction: column; align-items: stretch; } }

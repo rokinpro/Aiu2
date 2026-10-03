@@ -8,6 +8,7 @@ Build the app first. The initial scope is a functional, accessible demo interfac
 - Treat user preferences as explicit choices, never diagnoses. Include text directions, semantic labels, 44px targets, visible focus and reduced-motion support.
 - Keep credentials server-side. Never commit .env files, readings tied to people, private reports, or the source project brief. .env.example contains empty placeholders only.
 - One connected sensor belongs to elevator-a-lobby. The second zone, elevator-b-lobby, is prepared for a future device; never show it as live without readings. Activity is a presence proxy, never a people count, confirmed obstruction, or elevator fault. Stale data is unknown.
+- The Elevator A node supports one opted-in anonymous pairing at a time. Phone guidance comes from deterministic routing; the UNO Q receives only a short-lived guidance code and returns controller receipt. No actuator is installed, so never describe receipt as a buzz, vibration or physical output.
 - Reports remain pending review and do not modify the graph automatically. Use SQLite for server persistence, scoped to the anonymous browser session.
 - Ingestion is implemented; implement firmware, bridge and AI stages only when requested. Confirm board and module before wiring. Do not claim an integration works without a real test.
 - Run npm test and npm run build before handoff. Update README with actual behavior and limitations. Keep commits small and avoid unrelated changes.

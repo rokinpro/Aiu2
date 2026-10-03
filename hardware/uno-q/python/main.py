@@ -4,15 +4,19 @@ import queue
 import threading
 import time
 import uuid
+from datetime import datetime
 from pathlib import Path
 from urllib.request import Request, urlopen
 from arduino.app_utils import App, Bridge
 
 config = json.loads(Path(__file__).with_name("device-config.json").read_text())
 endpoint = config["api_url"].rstrip("/") + "/api/sensors/ingest"
+command_endpoint = config["api_url"].rstrip("/") + "/api/nodes/command"
 token = config["ingest_token"]
 session = str(uuid.uuid4())
 pending = queue.Queue(maxsize=10)
+inbound = queue.Queue(maxsize=1)
+acks = queue.Queue(maxsize=5)
 sequence = 0
 last_log = 0.0
 
@@ -43,6 +47,50 @@ def send_readings():
 threading.Thread(target=send_readings, daemon=True).start()
 
 
+def poll_commands():
+    while True:
+        try:
+            request = Request(command_endpoint + "?deviceId=beacon-a",
+                              headers={"Authorization": "Bearer " + token})
+            with urlopen(request, timeout=1) as response:
+                command = json.load(response).get("command")
+            if command and inbound.empty():
+                inbound.put_nowait(command)
+        except queue.Full:
+            pass
+        except Exception:
+            # A disconnected host cannot create a controller acknowledgement.
+            pass
+        time.sleep(0.5)
+
+
+def send_acks():
+    while True:
+        payload = acks.get()
+        try:
+            for attempt in range(2):
+                if time.time() >= payload["expiresAt"]:
+                    break
+                try:
+                    body = {"deviceId": "beacon-a", "commandId": payload["commandId"],
+                            "status": payload["status"]}
+                    request = Request(command_endpoint, data=json.dumps(body).encode(),
+                                      headers={"Content-Type": "application/json",
+                                               "Authorization": "Bearer " + token}, method="POST")
+                    with urlopen(request, timeout=1) as response:
+                        response.read()
+                    break
+                except Exception:
+                    if attempt == 0:
+                        time.sleep(0.2)
+        finally:
+            acks.task_done()
+
+
+threading.Thread(target=poll_commands, daemon=True).start()
+threading.Thread(target=send_acks, daemon=True).start()
+
+
 def loop():
     global sequence, last_log
     started = time.monotonic()
@@ -67,6 +115,27 @@ def loop():
         # A broken RPC link must not manufacture empty-space readings.
         print("Waiting for sensor sketch connection.", flush=True)
         time.sleep(1)
+    try:
+        command = inbound.get_nowait()
+    except queue.Empty:
+        command = None
+    if command:
+        try:
+            expires = datetime.fromisoformat(command["expiresAt"].replace("Z", "+00:00")).timestamp()
+            remaining = int((expires - time.time()) * 1000)
+            if 0 < remaining <= 5000 and command["nodeId"] == "beacon-a":
+                result = int(Bridge.call("aiu2_receive_guidance", command["id"],
+                                         command["code"], remaining))
+                acknowledgement = {"commandId": command["id"],
+                                   "status": "received" if result in (1, 2) else "rejected",
+                                   "expiresAt": expires}
+                try:
+                    acks.put_nowait(acknowledgement)
+                except queue.Full:
+                    pass
+        except Exception:
+            # No successful RPC means no acknowledgement. The server will retry.
+            pass
     time.sleep(max(0, 0.2 - (time.monotonic() - started)))
 
 
