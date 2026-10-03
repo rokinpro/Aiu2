@@ -4,7 +4,6 @@ import queue
 import threading
 import time
 import uuid
-from datetime import datetime
 from pathlib import Path
 from urllib.request import Request, urlopen
 from arduino.app_utils import App, Bridge
@@ -55,6 +54,7 @@ def poll_commands():
             with urlopen(request, timeout=1) as response:
                 command = json.load(response).get("command")
             if command and inbound.empty():
+                command["deadline"] = time.monotonic() + min(command["ttlMs"], 5000) / 1000
                 inbound.put_nowait(command)
         except queue.Full:
             pass
@@ -69,7 +69,7 @@ def send_acks():
         payload = acks.get()
         try:
             for attempt in range(2):
-                if time.time() >= payload["expiresAt"]:
+                if time.monotonic() >= payload["deadline"]:
                     break
                 try:
                     body = {"deviceId": "beacon-a", "commandId": payload["commandId"],
@@ -121,14 +121,13 @@ def loop():
         command = None
     if command:
         try:
-            expires = datetime.fromisoformat(command["expiresAt"].replace("Z", "+00:00")).timestamp()
-            remaining = int((expires - time.time()) * 1000)
+            remaining = int((command["deadline"] - time.monotonic()) * 1000)
             if 0 < remaining <= 5000 and command["nodeId"] == "beacon-a":
                 result = int(Bridge.call("aiu2_receive_guidance", command["id"],
                                          command["code"], remaining))
                 acknowledgement = {"commandId": command["id"],
                                    "status": "received" if result in (1, 2) else "rejected",
-                                   "expiresAt": expires}
+                                   "deadline": command["deadline"]}
                 try:
                     acks.put_nowait(acknowledgement)
                 except queue.Full:
