@@ -26,7 +26,7 @@ Open http://localhost:3000. Production: `npm run build` then `npm start`. SQLite
 
 ## Sensor configuration
 
-Copy `.env.example` to `.env.local`. Set `AIU2_INGEST_TOKEN` to a randomly generated secret of at least 24 characters. Keep it on the server and laptop bridge, never in browser JavaScript. Ingestion returns 503 until configured and 401 for incorrect authentication.
+Copy `.env.example` to `.env.local`. Set `AIU2_INGEST_TOKEN` to a randomly generated secret of at least 24 characters. Keep it on the server and UNO Q Python bridge, never in browser JavaScript. Ingestion returns 503 until configured and 401 for incorrect authentication.
 
 - `AIU2_DB_PATH`: optional database filename; defaults to `data/aiu2.sqlite`.
 - `AIU2_FOREGROUND_CM`: positive foreground threshold in centimetres, defaults to 30. Calibrate against the actual sensor geometry.

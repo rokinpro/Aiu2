@@ -14,7 +14,13 @@ export async function GET(request: Request) {
   if (denied) return denied;
   const deviceId = new URL(request.url).searchParams.get("deviceId");
   if (deviceId !== "beacon-a") return Response.json({ error: "Unknown node" }, { status: 400 });
-  return Response.json({ command: getStore().pendingCommand(deviceId) },
+  const pending = getStore().pendingCommand(deviceId);
+  // The bridge needs only an opaque command ID, a short code and an expiry.
+  // Keep the paired profile, destination and route ID on the server/phone.
+  const command = pending ? {
+    id: pending.id, nodeId: pending.nodeId, code: pending.code, expiresAt: pending.expiresAt,
+  } : null;
+  return Response.json({ command },
     { headers: { "Cache-Control": "no-store" } });
 }
 export async function POST(request: Request) {
