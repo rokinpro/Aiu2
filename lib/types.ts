@@ -68,6 +68,18 @@ export type ReportPayload = {
   reportedAt: string;
   reviewStatus: "pending";
 };
+export type PhotoCandidate = {
+  kind: "stairs" | "ramp" | "signage" | "entrance" | "elevator" | "bench";
+  confidence: "possible";
+};
+export type PhotoDraft = {
+  candidates: PhotoCandidate[];
+  draft: string;
+  missingDetails: string[];
+  uncertainty: string;
+  source: "Gemini";
+  model: string;
+};
 export type Route = {
   id: string;
   nodes: string[];

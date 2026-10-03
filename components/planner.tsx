@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   MapPin,
@@ -19,6 +19,7 @@ import { graph, nodes, defaultProfile } from "@/lib/demo";
 import { useLiveConditions } from "./use-live-conditions";
 import ConditionsPanel from "./conditions-panel";
 import NodePairing from "./node-pairing";
+import PhotoAssist from "./photo-assist";
 import { findRoute, routeChoices } from "@/lib/routing";
 import type { Profile, ReportPayload, Route, PreferenceSuggestion } from "@/lib/types";
 const labels: [keyof Omit<Profile, "minWidthCm">, string, React.ReactNode][] = [
@@ -41,6 +42,9 @@ export default function Planner() {
   const [loaded, setLoaded] = useState(false);
   const demo = useLiveConditions();
   const [saving, setSaving] = useState(false);
+  const [reportDetails, setReportDetails] = useState("");
+  const [photoReset, setPhotoReset] = useState(0);
+  const reportDetailsRef = useRef<HTMLTextAreaElement>(null);
   const [preferenceStatus, setPreferenceStatus] = useState(
     "Loading preferences…",
   );
@@ -726,6 +730,8 @@ export default function Planner() {
               );
               setStatus("Observation saved. Pending review.");
               form.reset();
+              setReportDetails("");
+              setPhotoReset((previous) => previous + 1);
             } catch (error) {
               setStatus(
                 error instanceof Error
@@ -758,10 +764,17 @@ export default function Planner() {
               </select>
             </label>
           </div>
+          <PhotoAssist key={photoReset} onUseDraft={(text) => {
+            setReportDetails(text);
+            reportDetailsRef.current?.focus();
+          }} />
           <label className="field">
             What did you notice?
             <textarea
+              ref={reportDetailsRef}
               name="details"
+              value={reportDetails}
+              onChange={(event) => setReportDetails(event.target.value)}
               required
               maxLength={1000}
               rows={3}

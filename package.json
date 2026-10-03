@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.70.0",
+    "@google/genai": "^2.27.0",
     "@ibm-cloud/watsonx-ai": "^1.7.16",
     "ibm-cloud-sdk-core": "^5.8.0",
     "lucide-react": "latest",

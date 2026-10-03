@@ -572,6 +572,35 @@ dd {
   margin-bottom: 15px;
   padding: 10px;
 }
+.photo-assist { margin: 4px 0 20px; padding: 18px; border: 1px solid #c9dac8; border-radius: 12px; background: linear-gradient(135deg, #f1f8ef, #fff 72%); }
+.photo-assist-heading { display: flex; align-items: center; gap: 11px; margin-bottom: 13px; }
+.photo-assist-heading strong { display: block; font-size: 15px; color: #214b38; }
+.photo-assist-heading p { font-size: 12px; color: #536c58; }
+.photo-assist-icon { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; border-radius: 10px; background: #dceee0; color: #21624c; }
+.photo-assist .field { margin-bottom: 6px; }
+.photo-assist input[type="file"] { padding: 7px; }
+.photo-assist > .small { font-size: 11px; line-height: 1.5; }
+.photo-assist-selection { display: flex; align-items: center; gap: 10px; margin-top: 13px; overflow-wrap: anywhere; }
+.photo-assist-selection img { width: 74px; height: 74px; flex: 0 0 74px; object-fit: cover; border-radius: 8px; background: #e7eee6; }
+.photo-assist-selection strong, .photo-assist-selection span { display: block; }
+.photo-assist-selection strong { font-size: 12px; }
+.photo-assist-selection span { color: #5a6b5d; font-size: 11px; }
+.photo-assist-analyze, .photo-use-draft { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; margin-top: 13px; padding: 8px 14px; border: 1px solid #21624c; border-radius: 8px; color: #fff; background: #21624c; font-weight: 700; font-size: 12px; }
+.photo-assist-analyze:disabled { opacity: .55; cursor: not-allowed; }
+.photo-assist-status { min-height: 18px; margin-top: 7px; color: #315a45; }
+.photo-draft { margin-top: 14px; padding: 16px; border: 1px solid #b6cdb8; border-radius: 9px; background: #fff; }
+.photo-draft-title { display: flex; align-items: center; gap: 7px; color: #245d48; font-size: 13px; }
+.photo-draft-title span { margin-left: auto; color: #72633d; font-size: 11px; font-weight: 700; }
+.photo-candidates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 14px 0; }
+.photo-candidate { padding: 10px; border: 1px solid #d7e7d7; border-radius: 8px; background: #f5faf4; }
+.photo-candidate strong, .photo-candidate span { display: block; }
+.photo-candidate strong { color: #214f3f; font-size: 12px; }
+.photo-candidate span { color: #5b715e; font-size: 11px; }
+.photo-draft-copy { margin: 13px 0 8px; font-size: 13px; }
+.photo-missing { margin-top: 12px; font-size: 12px; }
+.photo-missing ul { margin: 5px 0 0; padding-left: 18px; }
+.photo-use-draft { margin-top: 16px; background: #e5f2e8; color: #205943; }
+@media (max-width: 520px) { .photo-candidates { grid-template-columns: 1fr; } }
 .saved-reports {
   padding: 25px;
   margin-top: 20px;
