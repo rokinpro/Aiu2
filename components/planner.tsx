@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   MapPin,
@@ -21,6 +21,8 @@ import { ConditionsPanelView } from "./conditions-panel";
 import NodePairing from "./node-pairing";
 import PhotoAssist from "./photo-assist";
 import { findRoute, routeChoices } from "@/lib/routing";
+import { currentActivity } from "@/lib/conditions";
+import { collectRouteOptions, type RouteCatalog } from "@/lib/route-display";
 import type { Profile, ReportPayload, Route, PreferenceSuggestion } from "@/lib/types";
 const labels: [keyof Omit<Profile, "minWidthCm">, string, React.ReactNode][] = [
   ["noStairs", "Avoid stairs", <Accessibility key="a" size={18} />],
@@ -49,6 +51,8 @@ export default function Planner() {
     "Loading preferences…",
   );
   const [dismissed, setDismissed] = useState("");
+  const [routeCatalog, setRouteCatalog] = useState<RouteCatalog>({ journeyKey: "", routes: [] });
+  const [recommended, setRecommended] = useState({ journeyKey: "", id: "" });
   const [needsText, setNeedsText] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [aiStatus, setAiStatus] = useState("");
@@ -107,33 +111,58 @@ export default function Planner() {
       controller.abort();
     };
   }, [profile, loaded]);
-  const computed = routeChoices(
-    graph,
-    start,
-    destination,
-    profile,
-    demo.zones?.map((zone) => zone.condition).filter((item): item is NonNullable<typeof item> => !!item) ?? demo.condition,
-    { now: demo.now },
-  );
-  const retained = selected
-    ? findRoute(
-        { nodes: graph.nodes, edges: selected.edges },
-        start,
-        destination,
-        profile,
-        false,
-        demo.zones?.map((zone) => zone.condition).filter((item): item is NonNullable<typeof item> => !!item) ?? demo.condition,
-        { now: demo.now },
-      )
+  const journeyKey = JSON.stringify([start, destination, profile]);
+  const conditions = demo.zones?.map((zone) => zone.condition)
+    .filter((item): item is NonNullable<typeof item> => !!item) ??
+    (demo.condition ? [demo.condition] : []);
+  const activityKey = conditions.map((item) =>
+    `${item.zoneId}:${currentActivity(item, demo.now)}`).join("|");
+  // A new raw echo does not change a route. Recompute only when an effective
+  // zone activity, journey endpoint, or explicit preference changes.
+  const computed = useMemo(() => routeChoices(
+    graph, start, destination, profile, conditions, { now: demo.now },
+  // The activity key covers every sensor value used by routing.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [journeyKey, activityKey]);
+  const computedIds = computed.map((route) => route.id).join("|");
+  useEffect(() => {
+    setRouteCatalog((previous) => collectRouteOptions(previous, journeyKey, computed));
+  // A route is added only when its identity changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [journeyKey, computedIds]);
+  const catalogRoutes = routeCatalog.journeyKey === journeyKey ? routeCatalog.routes : [];
+  const choices = useMemo(() => {
+    const currentById = new Map(computed.map((route) => [route.id, route]));
+    const seen = new Set<string>();
+    return [...catalogRoutes, ...computed].flatMap((route) => {
+      if (seen.has(route.id)) return [];
+      seen.add(route.id);
+      const refreshed = currentById.get(route.id) ?? findRoute(
+        { nodes: graph.nodes, edges: route.edges }, start, destination,
+        profile, false, conditions, { now: demo.now },
+      );
+      return refreshed ? [refreshed] : [];
+    });
+  // The activity key covers all live routing facts; raw measurements do not.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogRoutes, computed, journeyKey, activityKey]);
+  const active = selected
+    ? choices.find((route) => route.id === selected.id) ?? choices[0]
+    : choices[0];
+  const candidateId = computed[0]?.id ?? "";
+  useEffect(() => {
+    if (recommended.journeyKey !== journeyKey) {
+      setRecommended({ journeyKey, id: candidateId });
+      return;
+    }
+    if (recommended.id === candidateId) return;
+    const timer = setTimeout(() => setRecommended({ journeyKey, id: candidateId }), 3000);
+    return () => clearTimeout(timer);
+  }, [journeyKey, candidateId, recommended]);
+  const suggestion = recommended.journeyKey === journeyKey && active?.id !== recommended.id
+    ? choices.find((route) => route.id === recommended.id) ?? null
     : null;
-  const active = retained ?? computed[0];
-  const choices =
-    retained && !computed.some((r) => r.id === retained.id)
-      ? [...computed, retained]
-      : computed;
-  const suggestion =
-    active && computed[0]?.id !== active.id ? computed[0] : null;
-  const offerKey = `${suggestion?.id}-${demo.activity}`;
+  const offerKey = `${journeyKey}:${suggestion?.id}`;
   useEffect(() => {
     if (!selected && active) setSelected(active);
   }, [selected, active]);
@@ -304,54 +333,6 @@ export default function Planner() {
           </p>
         </aside>
         <section className="map-column">
-          {suggestion && dismissed !== offerKey && (
-            <section
-              className="route-offer"
-              aria-label="Suggested route change"
-              aria-live="polite"
-            >
-              <span className="demo-label">A NEW OPTION · YOUR CHOICE</span>
-              <h2>
-                {demo.activity === "sustained"
-                  ? "Take a route away from the activity?"
-                  : "A different route now fits your preferences."}
-              </h2>
-              <p>
-                {routeName(suggestion)}
-                {demo.activity === "sustained" &&
-                !suggestion.edges.some((e) => e.zoneId === "elevator-a-lobby")
-                  ? " avoids the activity near Elevator A."
-                  : "."}{" "}
-                {suggestion.distanceM >= active.distanceM
-                  ? `${suggestion.distanceM - active.distanceM} m more`
-                  : `${active.distanceM - suggestion.distanceM} m less`}{" "}
-                walking, {Math.abs(suggestion.seconds - active.seconds)} seconds{" "}
-                {suggestion.seconds >= active.seconds ? "longer" : "shorter"} in
-                estimated travel time.
-              </p>
-              <p className="small">
-                Your map and directions still follow{" "}
-                {routeName(active).toLowerCase()}.
-              </p>
-              <div>
-                <button
-                  className="primary"
-                  onClick={() => {
-                    setSelected(suggestion);
-                    setDismissed("");
-                  }}
-                >
-                  Use this route <ArrowRight size={17} />
-                </button>
-                <button
-                  className="keep-route"
-                  onClick={() => setDismissed(offerKey)}
-                >
-                  Keep my route
-                </button>
-              </div>
-            </section>
-          )}
           <div className="panel map-panel">
             <div className="map-toolbar">
               <div>
@@ -532,7 +513,7 @@ export default function Planner() {
                 </p>
               </div>
             ) : (
-              choices.map((r, i) => (
+              choices.map((r) => (
                 <button
                   className={`route-card ${active?.id === r.id ? "selected" : ""}`}
                   key={r.id}
@@ -546,9 +527,9 @@ export default function Planner() {
                     <span className="route-tag">
                       {active?.id === r.id
                         ? "YOUR SELECTED ROUTE"
-                        : i === 0
+                        : recommended.journeyKey === journeyKey && recommended.id === r.id
                           ? "SUGGESTED FIT"
-                          : "DIRECT OPTION"}
+                          : "ALTERNATE ROUTE"}
                     </span>
                     <span className="radio-dot">
                       {active?.id === r.id && <Check size={13} />}
@@ -573,6 +554,46 @@ export default function Planner() {
               ))
             )}
           </div>
+          {suggestion && dismissed !== offerKey && (
+            <section
+              className="route-offer"
+              aria-label="Suggested route change"
+              aria-live="polite"
+            >
+              <span className="demo-label">A NEW OPTION · YOUR CHOICE</span>
+              <h2>A different route is available.</h2>
+              <p>
+                {routeName(suggestion)} is another way to reach your destination. {" "}
+                {suggestion.distanceM >= active.distanceM
+                  ? `${suggestion.distanceM - active.distanceM} m more`
+                  : `${active.distanceM - suggestion.distanceM} m less`}{" "}
+                walking, {Math.abs(suggestion.seconds - active.seconds)} seconds{" "}
+                {suggestion.seconds >= active.seconds ? "longer" : "shorter"} in
+                estimated travel time.
+              </p>
+              <p className="small">
+                Your map and directions still follow{" "}
+                {routeName(active).toLowerCase()}.
+              </p>
+              <div>
+                <button
+                  className="primary"
+                  onClick={() => {
+                    setSelected(suggestion);
+                    setDismissed("");
+                  }}
+                >
+                  Use this route <ArrowRight size={17} />
+                </button>
+                <button
+                  className="keep-route"
+                  onClick={() => setDismissed(offerKey)}
+                >
+                  Keep my route
+                </button>
+              </div>
+            </section>
+          )}
           {active && (
             <details className="panel directions" open>
               <summary>
