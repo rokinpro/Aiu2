@@ -1036,7 +1036,11 @@ footer {
 .node-guidance > p { color: #56695c; font-size: 13px; }
 .node-guidance ol { margin: 15px 0 0; padding-left: 21px; font-size: 13px; }
 .node-guidance li { margin: 7px 0; }
-.node-speak { display: inline-flex; align-items: center; align-self: flex-start; gap: 8px; padding: 9px 13px; margin-top: 15px; background: #e7f3e9; border: 1px solid #a7c8b1; border-radius: 8px; font-size: 12px; font-weight: 700; }
+.node-speech { margin: 15px 0 18px; }
+.node-speech-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.node-speak { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 9px 13px; background: #e7f3e9; color: #174f3d; border: 1px solid #a7c8b1; border-radius: 8px; font-size: 12px; font-weight: 700; }
+.node-speak:first-child { background: #175e4d; border-color: #175e4d; color: #fff; }
+.node-speech p { margin-top: 8px; }
 .controller-status { display: flex; align-items: flex-start; gap: 10px; border-top: 1px solid #dce8db; margin-top: auto; padding-top: 18px; color: #245d49; }
 .controller-status strong, .controller-status small { display: block; }
 .controller-status strong { font-size: 12px; }

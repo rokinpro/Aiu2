@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
-import { ArrowRight, Check, Link2, Radio, Volume2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowRight, Check, Link2, Radio, RotateCcw, Square, Volume2 } from "lucide-react";
 import { defaultProfile, nodes } from "@/lib/demo";
 import type { NodeCommand, OutputChoice, PairedSession, PhoneGuidance, Profile } from "@/lib/types";
 
@@ -25,6 +25,21 @@ export default function NodePairing() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [now, setNow] = useState(0);
+  const [playback, setPlayback] = useState<"idle" | "loading" | "playing" | "browser">("idle");
+  const [speechStatus, setSpeechStatus] = useState("");
+  const [hasPlayed, setHasPlayed] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
+  const requestRef = useRef<AbortController | null>(null);
+  const generationRef = useRef(0);
+  const clearPlayback = useCallback(() => {
+    generationRef.current += 1;
+    requestRef.current?.abort();
+    requestRef.current = null;
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ""; audioRef.current = null; }
+    if (audioUrlRef.current) { URL.revokeObjectURL(audioUrlRef.current); audioUrlRef.current = null; }
+    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+  }, []);
   useEffect(() => {
     let stopped = false;
     async function refresh() {
@@ -72,6 +87,15 @@ export default function NodePairing() {
   }
   const selected = settings[slot];
   const session = view.session && Date.parse(view.session.expiresAt) > now ? view.session : null;
+  const speechKey = view.guidance ? [view.guidance.routeId, view.guidance.headline,
+    view.guidance.detail, ...view.guidance.textDirections].join("|") : "";
+  useEffect(() => {
+    clearPlayback();
+    setPlayback("idle");
+    setSpeechStatus("");
+    setHasPlayed(false);
+    return clearPlayback;
+  }, [session?.id, session?.outputChoice, speechKey, clearPlayback]);
   const seconds = session && now ? Math.max(0, Math.min(180, Math.ceil((Date.parse(session.expiresAt) - now) / 1000))) : null;
   const command = view.command;
   const commandState = !command ? "Waiting for an approach" :
@@ -79,15 +103,74 @@ export default function NodePairing() {
     command.controllerStatus === "rejected" ? "Controller rejected guidance" :
     Date.parse(command.expiresAt) <= now ? "Command expired before acknowledgement" :
     "Command sent; awaiting controller acknowledgement";
-  function speak() {
-    if (!view.guidance || !window.speechSynthesis) {
-      setMessage("Speech is unavailable in this browser. Text directions remain below.");
+  function stopPlayback() {
+    clearPlayback();
+    setPlayback("idle");
+    setSpeechStatus("Playback stopped. Text directions remain below.");
+  }
+  function browserFallback(guidance: PhoneGuidance, generation: number) {
+    if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === "undefined") {
+      setPlayback("idle");
+      setSpeechStatus("Speech is unavailable. Text directions remain below.");
       return;
     }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance([view.guidance.headline, ...view.guidance.textDirections].join(" "));
+    const utterance = new SpeechSynthesisUtterance([guidance.headline, guidance.detail,
+      ...guidance.textDirections].join(" "));
     utterance.rate = 0.9;
+    utterance.onend = () => { if (generation === generationRef.current) setPlayback("idle"); };
+    utterance.onerror = () => {
+      if (generation === generationRef.current) {
+        setPlayback("idle");
+        setSpeechStatus("Browser speech could not play. Text directions remain below.");
+      }
+    };
+    setPlayback("browser");
+    setHasPlayed(true);
+    setSpeechStatus("Browser speech fallback · ElevenLabs unavailable");
     window.speechSynthesis.speak(utterance);
+  }
+  async function playDirections() {
+    const guidance = view.guidance;
+    if (!session || session.outputChoice !== "speech" || !guidance?.routeId) return;
+    clearPlayback();
+    const generation = generationRef.current;
+    const controller = new AbortController();
+    requestRef.current = controller;
+    setPlayback("loading");
+    setSpeechStatus("Preparing ElevenLabs speech…");
+    try {
+      const response = await fetch("/api/nodes/speech", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ routeId: guidance.routeId }), signal: controller.signal,
+      });
+      if (generation !== generationRef.current) return;
+      if (response.status === 409 || response.status === 403) {
+        const data = await response.json();
+        setPlayback("idle");
+        setSpeechStatus(data.error || "Review the current directions and try again.");
+        return;
+      }
+      if (!response.ok) throw new Error("Provider unavailable");
+      const blob = await response.blob();
+      if (generation !== generationRef.current) return;
+      const url = URL.createObjectURL(blob);
+      audioUrlRef.current = url;
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => { if (generation === generationRef.current) setPlayback("idle"); };
+      await audio.play();
+      if (generation !== generationRef.current) return;
+      setPlayback("playing");
+      setHasPlayed(true);
+      setSpeechStatus("Playing with ElevenLabs");
+    } catch {
+      if (generation !== generationRef.current) return;
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ""; audioRef.current = null; }
+      if (audioUrlRef.current) { URL.revokeObjectURL(audioUrlRef.current); audioUrlRef.current = null; }
+      browserFallback(guidance, generation);
+    } finally {
+      if (generation === generationRef.current) requestRef.current = null;
+    }
   }
   return <section className="node-pairing" aria-label="Connect to Elevator A beacon">
     <div className="node-pairing-heading">
@@ -127,7 +210,14 @@ export default function NodePairing() {
           <h3>{view.guidance?.headline ?? "Preparing your directions…"}</h3>
           <p>{view.guidance?.detail ?? "Your choices are saved for this pairing."}</p>
           {view.guidance && <ol>{view.guidance.textDirections.map((step, index) => <li key={`${index}-${step}`}>{step}</li>)}</ol>}
-          {session.outputChoice === "speech" && <button type="button" className="node-speak" onClick={speak}><Volume2 size={17} /> Read directions aloud</button>}
+          {session.outputChoice === "speech" && view.guidance?.routeId && <div className="node-speech">
+            <div className="node-speech-actions">
+              <button type="button" className="node-speak" disabled={playback === "loading"} onClick={() => void playDirections()}><Volume2 size={17} /> Play directions</button>
+              <button type="button" className="node-speak" disabled={playback === "idle"} onClick={stopPlayback}><Square size={15} /> Stop</button>
+              <button type="button" className="node-speak" disabled={!hasPlayed || playback === "loading"} onClick={() => void playDirections()}><RotateCcw size={16} /> Replay</button>
+            </div>
+            <p className="small muted" role="status">{speechStatus || "Speech plays only when you choose Play. All directions remain in text."}</p>
+          </div>}
           <div className="controller-status"><Radio size={17} /><div><strong>{commandState}</strong><small>No buzzer or vibration actuator is connected; this is controller receipt only.</small></div></div>
           <button type="button" className="node-disconnect" disabled={busy} onClick={() => void unpair()}>Disconnect this phone</button>
         </> : <div className="node-empty"><Radio size={30} /><h3>Your next step, right here.</h3><p>Pair a profile to see personalized phone directions. The beacon never identifies someone from an ultrasonic reading.</p></div>}
