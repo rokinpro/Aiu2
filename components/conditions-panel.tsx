@@ -13,15 +13,34 @@ export function ConditionsPanelView({
   compact?: boolean;
   live: ReturnType<typeof useLiveConditions>;
 }) {
-  const age = live.now > 0 && live.condition?.receivedAt
-    ? Math.max(
-        0,
-        Math.floor((live.now - Date.parse(live.condition.receivedAt)) / 1000),
-      )
-    : null;
+  const received = Date.parse(live.condition?.receivedAt ?? "");
+  const ageMs = live.now > 0 && Number.isFinite(received) && live.now >= received
+    ? live.now - received : null;
+  const age = ageMs === null ? null : Math.floor(ageMs / 1000);
+  const fresh = ageMs !== null && ageMs <= 5000;
+  if (compact) {
+    const status = live.activity === "clear" ? "low"
+      : live.activity === "some" || live.activity === "sustained" ? "presence"
+        : "checking";
+    return <section className="live-panel compact" aria-label="Elevator A conditions">
+      <div className="live-heading">
+        <Radio size={23} aria-hidden="true" />
+        <div><p className="eyebrow">ELEVATOR A · FLOOR 1</p><h2>Local activity</h2></div>
+      </div>
+      <div className="activity-scale" role="group" aria-label={`Current sensor state: ${status}`}>
+        {(["low", "presence", "checking"] as const).map((item) => <div
+          key={item}
+          className={`activity-state ${item} ${status === item ? "active" : ""}`}
+          aria-current={status === item ? "true" : undefined}
+        ><span aria-hidden="true" />{item === "low" ? "Low activity" : item === "presence" ? "Presence" : "Checking"}</div>)}
+      </div>
+      <p className="small muted">Presence indicator only. It does not confirm an obstruction or elevator service.</p>
+      <Link href="/conditions" className="text-link">View live readings <ArrowUpRight size={15} /></Link>
+    </section>;
+  }
   return (
     <section
-      className={`live-panel ${compact ? "compact" : ""}`}
+      className="live-panel"
       aria-label="Elevator A conditions"
     >
       <div className="live-heading">
@@ -39,7 +58,7 @@ export function ConditionsPanelView({
           </h2>
         </div>
         <span className={`live-badge ${live.activity}`}>
-          {age !== null && age <= 5 ? "Receiving" : "No fresh data"}
+          {fresh ? "Receiving" : "No fresh data"}
         </span>
       </div>
       <div className="live-metrics">
@@ -70,11 +89,6 @@ export function ConditionsPanelView({
         {live.error ||
           "Presence estimate only. Activity does not confirm an obstruction or elevator service."}
       </p>
-      {compact ? (
-        <Link href="/conditions" className="text-link">
-          View conditions <ArrowUpRight size={15} />
-        </Link>
-      ) : (
         <>
           <div className="sensor-zone-list" aria-label="Sensor zones">
             {(live.zones ?? []).map((zone) => <div key={zone.zoneId}>
@@ -114,7 +128,6 @@ export function ConditionsPanelView({
             changes to stay readable.
           </p>
         </>
-      )}
     </section>
   );
 }

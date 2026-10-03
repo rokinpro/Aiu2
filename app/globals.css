@@ -986,15 +986,56 @@ footer {
 .live-panel.compact {
   background: #eef4e8;
 }
-.compact .live-metrics {
-  margin: 15px 0;
+.activity-scale {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 18px 0 12px;
 }
-.compact .live-metrics strong {
-  font-size: 19px;
+.activity-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 75px;
+  padding: 9px 5px;
+  border: 1px solid #d3dfd1;
+  border-radius: 9px;
+  background: #f8fbf5;
+  color: #526555;
+  font-size: 11px;
+  font-weight: 650;
+  text-align: center;
+}
+.activity-state > span {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #9eafa4;
+}
+.activity-state.low.active {
+  border-color: #448764;
+  background: #e1f1e3;
+  color: #205c3d;
+}
+.activity-state.low.active > span { background: #348353; }
+.activity-state.presence.active {
+  border-color: #c98237;
+  background: #fff0db;
+  color: #7a491b;
+}
+.activity-state.presence.active > span { background: #c98237; }
+.activity-state.checking.active {
+  border-color: #71847a;
+  background: #ebefea;
+  color: #43544b;
+}
+.compact > .small {
+  margin-bottom: 12px;
 }
 .compact .text-link {
-  min-height: 28px;
-  margin-top: 5px;
+  min-height: 44px;
 }
 @media (max-width: 700px) {
   .live-panel {
