@@ -20,13 +20,24 @@ The board needs a reachable Aiu2 server URL. `127.0.0.1` on the UNO Q points to 
 
 UNO Q's main GPIO headers operate at 3.3 V. Some MCU pins have conditional 5 V tolerance, but do not assume that across pins and modes. The pictured sensor is marked HC-SR04, not a confirmed low-voltage variant; treat it as the conventional 5 V module.
 
-Use a suitable level shifter or a properly selected resistor divider on ECHO before the MCU input. Do not connect the sensor's 5 V echo directly while pin tolerance is unconfirmed. Supply and ground must follow the board/sensor pin labels, and all wiring must be performed with power disconnected. Final pin assignments and divider values will be selected after the team confirms available level-shifting parts. No motor or buzzer is needed for distance ingestion.
+For the selected pin D10, a divider is not required: Arduino maps D10 to STM32 PB9, and ST lists PB9 as FT_f (5 V-tolerant). Configure it as plain digital INPUT, with internal pull-up/pull-down disabled. This pin-specific finding supersedes the earlier conservative requirement for a level shifter.
+
+| HC-SR04 | UNO Q |
+| --- | --- |
+| VCC | +5V OUT |
+| GND | GND |
+| TRIG | D9 (output) |
+| ECHO | D10 / PB9 (plain digital input) |
+
+Disconnect power before wiring. Power the sensor from the board, not an independent always-on supply: do not drive ECHO into an unpowered MCU. Do not substitute analog, JCTL or other pins based on a blanket claim of tolerance. The 3.3 V trigger is intended for the module's TTL trigger input; verify actual readings with this module. Hardware operation has not yet been tested.
+
+Pin-specific sources: [Arduino pin mapping](https://docs.arduino.cc/resources/pinouts/ABX00162-full-pinout.pdf) and [STM32U585 datasheet](https://www.st.com/resource/en/datasheet/stm32u585ai.pdf), PB9 FT_f row and input-voltage conditions (internal pulls disabled).
 
 ## Next physical steps
 
 1. Connect the UNO Q with a USB-C data cable and discover it in Arduino App Lab. Use adequate power per Arduino's instructions.
 2. Verify the built-in Blink example before attaching the sensor.
-3. Confirm available level shifter or resistor values, then finalize the HC-SR04 wiring and sketch.
+3. Wire the HC-SR04 using the pin-specific table above and a sketch configuring D10 as INPUT with no pulls.
 4. Connect App Lab's sketch/Python Bridge, configure the API URL and token privately, and observe actual distance readings.
 5. Calibrate the fixed background and foreground threshold. Verify activity rise, object removal, invalid echoes and stale status after stopping the feed.
 
