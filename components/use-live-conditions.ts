@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { currentActivity } from "@/lib/conditions";
+import { advanceDisplayReading, EMPTY_DISPLAY_READING } from "@/lib/display-reading";
 import type { ConditionsResponse } from "@/lib/types";
 export function useLiveConditions() {
   const [data, setData] = useState<ConditionsResponse>({
@@ -10,6 +11,7 @@ export function useLiveConditions() {
     recent: [],
   });
   const [now, setNow] = useState(0);
+  const [displayReading, setDisplayReading] = useState(EMPTY_DISPLAY_READING);
   const [error, setError] = useState("");
   useEffect(() => {
     let stopped = false;
@@ -27,6 +29,7 @@ export function useLiveConditions() {
         const result = await response.json();
         if (!stopped) {
           setData(result);
+          setDisplayReading((previous) => advanceDisplayReading(previous, result.condition, Date.now()));
           setError("");
         }
       } catch {
@@ -37,7 +40,7 @@ export function useLiveConditions() {
       }
     }
     void poll();
-    const clock = setInterval(() => setNow(Date.now()), 500);
+    const clock = setInterval(() => setNow(Date.now()), 1000);
     return () => {
       stopped = true;
       clearTimeout(timer);
@@ -51,5 +54,10 @@ export function useLiveConditions() {
     now,
     error,
     activity: currentActivity(data.condition ?? undefined, now),
+    displayDistanceCm: now > 0 && data.condition?.receivedAt &&
+      now >= Date.parse(data.condition.receivedAt) &&
+      now - Date.parse(data.condition.receivedAt) <= 5000
+      ? displayReading.distanceCm
+      : null,
   };
 }

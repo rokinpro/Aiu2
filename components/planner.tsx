@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { graph, nodes, defaultProfile } from "@/lib/demo";
 import { useLiveConditions } from "./use-live-conditions";
-import ConditionsPanel from "./conditions-panel";
+import { ConditionsPanelView } from "./conditions-panel";
 import NodePairing from "./node-pairing";
 import PhotoAssist from "./photo-assist";
 import { findRoute, routeChoices } from "@/lib/routing";
@@ -168,7 +168,7 @@ export default function Planner() {
       <p className="map-disclosure">
         Illustrative map · access measurements are unverified.
       </p>
-      <ConditionsPanel compact />
+      <ConditionsPanelView compact live={demo} />
       <NodePairing />
       <div className="workspace">
         <aside className="panel preferences">

@@ -2,12 +2,17 @@
 import Link from "next/link";
 import { Radio, ArrowUpRight } from "lucide-react";
 import { useLiveConditions } from "./use-live-conditions";
-export default function ConditionsPanel({
+export default function ConditionsPanel({ compact = false }: { compact?: boolean }) {
+  const live = useLiveConditions();
+  return <ConditionsPanelView compact={compact} live={live} />;
+}
+export function ConditionsPanelView({
   compact = false,
+  live,
 }: {
   compact?: boolean;
+  live: ReturnType<typeof useLiveConditions>;
 }) {
-  const live = useLiveConditions();
   const age = live.now > 0 && live.condition?.receivedAt
     ? Math.max(
         0,
@@ -41,8 +46,8 @@ export default function ConditionsPanel({
         <div>
           <span>Raw distance</span>
           <strong>
-            {live.condition?.distanceCm != null
-              ? `${live.condition.distanceCm.toFixed(1)} cm`
+            {live.displayDistanceCm != null
+              ? `${live.displayDistanceCm.toFixed(1)} cm`
               : "—"}
           </strong>
         </div>
@@ -74,7 +79,7 @@ export default function ConditionsPanel({
           <div className="sensor-zone-list" aria-label="Sensor zones">
             {(live.zones ?? []).map((zone) => <div key={zone.zoneId}>
               <strong>{zone.zoneId === "elevator-a-lobby" ? "Elevator A lobby" : "Elevator B lobby"}</strong>
-              <span>{zone.fresh ? `${zone.condition?.activity ?? "unknown"} activity · ${zone.condition?.distanceCm?.toFixed(1) ?? "—"} cm` : "No fresh data"}</span>
+              <span>{zone.fresh ? `${zone.condition?.activity ?? "unknown"} activity · ${zone.summary?.medianCm?.toFixed(1) ?? "—"} cm median` : "No fresh data"}</span>
             </div>)}
           </div>
           <dl>
@@ -105,7 +110,8 @@ export default function ConditionsPanel({
           <p className="small muted">
             Three consecutive one-second classifications confirm a change.
             Readings older than five seconds are unknown. Invalid echoes lower
-            measurement quality.
+            measurement quality. The raw distance display holds isolated small
+            changes to stay readable.
           </p>
         </>
       )}
