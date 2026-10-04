@@ -1,5 +1,7 @@
 # Photo assistant sample images
 
+The Aiu2 logo is available as a [scalable wordmark](aiu2-logo.svg) and a [transparent PNG](aiu2-logo.png). The square app icon is available as a [512-pixel PNG](aiu2-icon.png) or the original [`app/icon.svg`](../app/icon.svg). The SVGs stay sharp when resized.
+
 These three PNGs are synthetic illustrations for trying the photo-assisted report flow. They do not depict a real campus location or establish accessibility, dimensions, or current conditions.
 
 | File | Visible features to try |

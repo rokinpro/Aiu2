@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 154 48" role="img" aria-labelledby="title desc">
+  <title id="title">Aiu2 logo</title>
+  <desc id="desc">White navigation arrow in a green rounded square followed by the word aiu2.</desc>
+  <rect x="2" y="5" width="38" height="38" rx="12" fill="#175e4d"/>
+  <path d="m11.5 31 8.55-17.1L30.5 32.9l-10.45-4.75Z" fill="#fff"/>
+  <text x="50" y="34" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="700" letter-spacing="-1.5" fill="#253c33">aiu<tspan fill="#69825d">2</tspan></text>
+</svg>
