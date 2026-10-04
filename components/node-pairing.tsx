@@ -31,6 +31,8 @@ export default function NodePairing() {
   const audioUrlRef = useRef<string | null>(null);
   const requestRef = useRef<AbortController | null>(null);
   const generationRef = useRef(0);
+  const pairingRevisionRef = useRef(0);
+  const pairingMutationRef = useRef(false);
   const clearPlayback = useCallback(() => {
     generationRef.current += 1;
     requestRef.current?.abort();
@@ -42,11 +44,12 @@ export default function NodePairing() {
   useEffect(() => {
     let stopped = false;
     async function refresh() {
+      const revision = pairingRevisionRef.current;
       try {
         const response = await fetch("/api/nodes/pairing", { cache: "no-store" });
         if (!response.ok) throw new Error();
         const data = await response.json() as PairingView;
-        if (!stopped) setView(data);
+        if (!stopped && !pairingMutationRef.current && revision === pairingRevisionRef.current) setView(data);
       } catch {
         if (!stopped) setMessage("Pairing status is unavailable. Check the app connection.");
       }
@@ -60,6 +63,8 @@ export default function NodePairing() {
     setSettings((previous) => ({ ...previous, [slot]: { ...previous[slot], ...change } }));
   }
   async function pair() {
+    pairingMutationRef.current = true;
+    pairingRevisionRef.current += 1;
     setBusy(true); setMessage("");
     try {
       const response = await fetch("/api/nodes/pairing", {
@@ -72,9 +77,11 @@ export default function NodePairing() {
       setMessage(`Profile ${slot} connected to Elevator A Beacon. Approach the sensor for your cue.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not connect to Elevator A Beacon.");
-    } finally { setBusy(false); }
+    } finally { pairingMutationRef.current = false; pairingRevisionRef.current += 1; setBusy(false); }
   }
   async function unpair() {
+    pairingMutationRef.current = true;
+    pairingRevisionRef.current += 1;
     setBusy(true); setMessage("");
     try {
       const response = await fetch("/api/nodes/pairing", { method: "DELETE" });
@@ -82,10 +89,11 @@ export default function NodePairing() {
       setView({ session: null, command: null, guidance: null });
       setMessage("Disconnected from Elevator A Beacon.");
     } catch { setMessage("Could not disconnect. Try again."); }
-    finally { setBusy(false); }
+    finally { pairingMutationRef.current = false; pairingRevisionRef.current += 1; setBusy(false); }
   }
   const selected = settings[slot];
   const session = view.session && Date.parse(view.session.expiresAt) > now ? view.session : null;
+  const selectedProfileConnected = session?.profileSlot === slot;
   const speechKey = view.guidance ? [view.guidance.routeId, view.guidance.headline,
     view.guidance.detail, ...view.guidance.textDirections].join("|") : "";
   useEffect(() => {
@@ -198,7 +206,10 @@ export default function NodePairing() {
           </select>
         </label>
         <div className="node-pair-actions">
-          <button type="button" className="primary" disabled={busy} onClick={() => void pair()}>{session ? `Connect profile ${slot} to Elevator A Beacon` : "Connect to Elevator A Beacon"} <ArrowRight size={17} /></button>
+          {selectedProfileConnected ? <>
+            <button type="button" className="primary node-paired-button" disabled><Check size={17} /> Profile {slot} connected</button>
+            <button type="button" className="node-reconnect" disabled={busy} onClick={() => void pair()}>{busy ? "Connecting…" : "Reconnect or apply changes"}</button>
+          </> : <button type="button" className="primary" disabled={busy} onClick={() => void pair()}>{busy ? "Connecting…" : `Connect profile ${slot} to Elevator A Beacon`} <ArrowRight size={17} /></button>}
         </div>
       </div>
       <div className="node-guidance" aria-live="polite">

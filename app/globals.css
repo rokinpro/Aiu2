@@ -1097,10 +1097,12 @@ footer {
 .node-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 15px; margin: 4px 0 16px; }
 .node-choice { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 12px; cursor: pointer; }
 .node-choice input { width: 17px; height: 17px; accent-color: #175e4d; }
-.node-pair-actions { display: flex; gap: 10px; align-items: end; }
+.node-pair-actions { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
 .node-pair-actions .field { flex: 1; margin-bottom: 0; }
 .node-pair-actions .primary { min-height: 44px; width: 100%; white-space: normal; }
 .node-pair-actions button:disabled, .node-guidance button:disabled { opacity: .55; cursor: not-allowed; }
+.node-pair-actions .node-paired-button:disabled { display: inline-flex; align-items: center; justify-content: center; gap: 8px; opacity: 1; cursor: default; }
+.node-reconnect { min-height: 44px; width: 100%; border: 1px solid #a8cbbb; border-radius: 8px; background: #eaf5ed; color: #175e4d; font-size: 13px; font-weight: 700; }
 .node-guidance { background: #f7faf5; display: flex; flex-direction: column; }
 .node-guidance-top { display: flex; justify-content: space-between; gap: 12px; align-items: center; color: #55725e; font-size: 12px; margin-bottom: 21px; }
 .node-connected { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; }
