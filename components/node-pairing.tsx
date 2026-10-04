@@ -176,8 +176,8 @@ export default function NodePairing() {
   return <section className="node-pairing" aria-label="Connect to Elevator A beacon">
     <div className="node-pairing-heading">
       <div className="node-emblem"><Link2 size={25} /></div>
-      <div><p className="eyebrow">AT ELEVATOR A</p><h2>Guidance that follows your choices.</h2><p>Choose a profile, enter the code on the beacon, and connect one traveler at a time.</p></div>
-      <span className="node-presence"><Radio size={15} /> {session ? "Paired" : "Ready to pair"}</span>
+      <div><p className="eyebrow">AT ELEVATOR A</p><h2>Guidance that follows your choices.</h2><p>Choose a profile and enter code A1. After pairing, an approach sounds one short cue.</p></div>
+      <span className="node-presence"><Radio size={15} /> {session ? "Paired" : "Pair to enable cue"}</span>
     </div>
     <div className="node-pairing-body">
       <div className="node-profile-editor">
@@ -219,9 +219,9 @@ export default function NodePairing() {
             </div>
             <p className="small muted" role="status">{speechStatus || "Speech plays only when you choose Play. All directions remain in text."}</p>
           </div>}
-          <div className="controller-status"><Radio size={17} /><div><strong>{commandState}</strong><small>The buzzer gives a short attention cue. Follow the full directions on your phone.</small></div></div>
+          <div className="controller-status"><Radio size={17} /><div><strong>{commandState}</strong><small>{command?.actuatorExecuted ? "Already sounded for this pairing. Wait 15 seconds, then pair again to repeat." : "The buzzer gives one short attention cue. Follow the full directions on your phone."}</small></div></div>
           <button type="button" className="node-disconnect" disabled={busy} onClick={() => void unpair()}>Disconnect this phone</button>
-        </> : <div className="node-empty"><Radio size={30} /><h3>Your next step, right here.</h3><p>Pair a profile to see personalized phone directions. The beacon never identifies someone from an ultrasonic reading.</p></div>}
+        </> : <div className="node-empty"><Radio size={30} /><h3>Your next step, right here.</h3><p>Pair with code A1, then hold an object near the sensor for a few seconds. You’ll hear one cue and see personalized phone directions. The sensor does not identify you.</p></div>}
         {message && <p className="small node-message" role="status">{message}</p>}
       </div>
     </div>
