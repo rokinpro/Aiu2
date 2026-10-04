@@ -390,6 +390,20 @@ textarea {
   gap: 10px;
   margin: 25px 0 12px;
 }
+.route-context {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0 0 12px;
+  padding: 11px 13px;
+  border: 1px solid #c9d9bc;
+  border-radius: 9px;
+  background: #f1f6e9;
+  color: #31533e;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.route-context svg { flex: none; margin-top: 1px; }
 .route-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

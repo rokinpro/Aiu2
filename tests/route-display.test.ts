@@ -27,3 +27,18 @@ test("route cards keep their order through changing sensor activity", () => {
   assert.ok(clearFacts.some((fact) => fact.includes("Unknown widths")));
   assert.ok(clearFacts.every((fact) => !fact.includes("activity")));
 });
+
+test("a resting preference may already select the route away from the monitored area", () => {
+  const now = Date.parse("2026-10-03T18:00:00Z");
+  const condition: Condition = {
+    zoneId: "elevator-a-lobby", activity: "clear", sourceMode: "hardware",
+    receivedAt: new Date(now).toISOString(), distanceCm: 60,
+  };
+  const profile = { ...defaultProfile, resting: true };
+  const clear = routeChoices(graph, "entrance", "classroom", profile, condition, { now });
+  const busy = routeChoices(graph, "entrance", "classroom", profile,
+    { ...condition, activity: "sustained", distanceCm: 10 }, { now });
+  assert.ok(clear[0].nodes.includes("b1"));
+  assert.equal(busy[0].id, clear[0].id);
+  assert.ok(!busy[0].edges.some((edge) => edge.zoneId === "elevator-a-lobby"));
+});

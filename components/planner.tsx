@@ -161,15 +161,26 @@ export default function Planner() {
     return () => clearTimeout(timer);
   }, [journeyKey, candidateId, recommended]);
   useEffect(() => {
-    if (recommended.journeyKey === journeyKey && recommended.id &&
-      active && recommended.id !== active.id)
-      setOffered((previous) => previous.journeyKey === journeyKey && previous.id === recommended.id
-        ? previous : { journeyKey, id: recommended.id });
+    if (recommended.journeyKey !== journeyKey || !active) return;
+    if (!recommended.id || recommended.id === active.id) {
+      setOffered((previous) => previous.journeyKey === journeyKey && !previous.id
+        ? previous : { journeyKey, id: "" });
+      setDismissed((previous) => previous ? "" : previous);
+      return;
+    }
+    setOffered((previous) => previous.journeyKey === journeyKey && previous.id === recommended.id
+      ? previous : { journeyKey, id: recommended.id });
   }, [journeyKey, recommended, active]);
   const suggestion = offered.journeyKey === journeyKey && active?.id !== offered.id
     ? choices.find((route) => route.id === offered.id) ?? null
     : null;
   const offerKey = `${journeyKey}:${suggestion?.id}`;
+  const elevatorAActivity = currentActivity(
+    conditions.find((item) => item.zoneId === "elevator-a-lobby"), demo.now,
+  );
+  const activePassesElevatorA = active?.edges.some((edge) => edge.zoneId === "elevator-a-lobby") ?? false;
+  const suggestionAvoidsElevatorA = suggestion && !suggestion.edges.some((edge) => edge.zoneId === "elevator-a-lobby");
+  const activityAlternative = elevatorAActivity === "sustained" && activePassesElevatorA && suggestionAvoidsElevatorA;
   useEffect(() => {
     if (!selected && active) setSelected(active);
   }, [selected, active]);
@@ -515,6 +526,20 @@ export default function Planner() {
             </h2>
             <span className="small muted">Based on today’s preferences</span>
           </div>
+          {elevatorAActivity === "sustained" && active && (
+            <p className="route-context" role="status">
+              <Info size={17} aria-hidden="true" />
+              <span>
+                {!profile.quieter
+                  ? "Sustained activity near Elevator A. Turn on Prefer quieter areas to include it in route suggestions."
+                  : !activePassesElevatorA
+                    ? "Sustained activity near Elevator A. Your selected route already avoids that area."
+                    : suggestion && dismissed === offerKey
+                      ? "Sustained activity near Elevator A. You chose to keep this route; you can select the alternate route below."
+                      : "Sustained activity near Elevator A. Your route stays selected until you choose another one."}
+              </span>
+            </p>
+          )}
           <div className="route-grid" aria-live="polite">
             {choices.length === 0 ? (
               <div className="panel empty">
@@ -573,9 +598,11 @@ export default function Planner() {
               aria-live="polite"
             >
               <span className="demo-label">ANOTHER OPTION · YOUR CHOICE</span>
-              <h2>A different route is available.</h2>
+              <h2>{activityAlternative ? "A route around reported activity" : "A different route is available."}</h2>
               <p>
-                {routeName(suggestion)} is another way to reach your destination. {" "}
+                {activityAlternative
+                  ? `${routeName(suggestion)} avoids the monitored Elevator A lobby. `
+                  : `${routeName(suggestion)} is another way to reach your destination. `}
                 {suggestion.distanceM >= active.distanceM
                   ? `${suggestion.distanceM - active.distanceM} m more`
                   : `${active.distanceM - suggestion.distanceM} m less`}{" "}
