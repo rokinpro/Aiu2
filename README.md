@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:3000. Production: `npm run build` then `npm start`. SQLite automatically creates `data/aiu2.sqlite` on the first API request. Keep this directory on persistent disk. This adapter is for one Node server, not an ephemeral or multi-instance serverless deployment.
+Open http://localhost:3000. To use the team's USB beacon setup, run `npm run dev -- --port 3003` instead. Production: `npm run build` then `npm start`. SQLite automatically creates `data/aiu2.sqlite` on the first API request. Keep this directory on persistent disk. This adapter is for one Node server, not an ephemeral or multi-instance serverless deployment. See [SETUP.md](SETUP.md) for macOS, Windows and Linux instructions, private configuration, phone access and UNO Q deployment.
 
 ## Features
 
