@@ -180,7 +180,7 @@ export default function NodePairing() {
       if (generation === generationRef.current) requestRef.current = null;
     }
   }
-  return <section className="node-pairing" aria-label="Connect to Elevator A Beacon">
+  return <section id="beacon" className="node-pairing" aria-label="Connect to Elevator A Beacon">
     <div className="node-pairing-heading">
       <div className="node-emblem"><Link2 size={25} /></div>
       <div><p className="eyebrow">AT ELEVATOR A</p><h2>Elevator A Beacon</h2><p>Choose a profile and connect. When you approach, the beacon gives one short cue and your phone shows your directions.</p></div>

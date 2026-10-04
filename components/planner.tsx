@@ -204,9 +204,15 @@ export default function Planner() {
       <p className="map-disclosure">
         Illustrative map · access measurements are unverified.
       </p>
+      <nav className="feature-shortcuts" aria-label="Explore Aiu2 features">
+        <a href="#journey"><Footprints size={20} aria-hidden="true" /><span><strong>Plan a route</strong><small>Choose what works for you</small></span><ChevronRight size={17} aria-hidden="true" /></a>
+        <a href="#beacon"><Volume2 size={20} aria-hidden="true" /><span><strong>Connect the beacon</strong><small>Get a nearby cue</small></span><ChevronRight size={17} aria-hidden="true" /></a>
+        <a href="/conditions"><MapPin size={20} aria-hidden="true" /><span><strong>Live conditions</strong><small>See sensor activity</small></span><ChevronRight size={17} aria-hidden="true" /></a>
+        <a href="#report"><Flag size={20} aria-hidden="true" /><span><strong>Share an update</strong><small>Report what you notice</small></span><ChevronRight size={17} aria-hidden="true" /></a>
+      </nav>
       <ConditionsPanelView compact live={demo} />
       <NodePairing />
-      <div className="workspace">
+      <div id="journey" className="workspace">
         <aside className="panel preferences">
           <div className="section-title">
             <h2>Your journey</h2>
