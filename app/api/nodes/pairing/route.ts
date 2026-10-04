@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       outputChoice: data.outputChoice as PairedSession["outputChoice"],
     };
   } catch {
-    return Response.json({ error: "Check the node code and profile choices." }, { status: 400 });
+    return Response.json({ error: "Check the beacon and profile choices." }, { status: 400 });
   }
   const session = getStore().pairNode(await owner(), input);
   if (!session) return Response.json({ error: "This node is paired with another traveler. Try again shortly." }, { status: 409 });

@@ -1093,7 +1093,7 @@ footer {
 .node-choice input { width: 17px; height: 17px; accent-color: #175e4d; }
 .node-pair-actions { display: flex; gap: 10px; align-items: end; }
 .node-pair-actions .field { flex: 1; margin-bottom: 0; }
-.node-pair-actions .primary { min-height: 44px; white-space: nowrap; }
+.node-pair-actions .primary { min-height: 44px; width: 100%; white-space: normal; }
 .node-pair-actions button:disabled, .node-guidance button:disabled { opacity: .55; cursor: not-allowed; }
 .node-guidance { background: #f7faf5; display: flex; flex-direction: column; }
 .node-guidance-top { display: flex; justify-content: space-between; gap: 12px; align-items: center; color: #55725e; font-size: 12px; margin-bottom: 21px; }

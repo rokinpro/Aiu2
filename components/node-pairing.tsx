@@ -20,7 +20,6 @@ const choices: Array<[keyof Omit<Profile, "minWidthCm">, string]> = [
 export default function NodePairing() {
   const [slot, setSlot] = useState<Slot>("A");
   const [settings, setSettings] = useState(initial);
-  const [code, setCode] = useState("");
   const [view, setView] = useState<PairingView>({ session: null, command: null, guidance: null });
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -65,14 +64,14 @@ export default function NodePairing() {
     try {
       const response = await fetch("/api/nodes/pairing", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nodeCode: code.trim().toUpperCase(), profileSlot: slot, ...settings[slot] }),
+        body: JSON.stringify({ nodeCode: "A1", profileSlot: slot, ...settings[slot] }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not pair with the node.");
+      if (!response.ok) throw new Error(data.error || "Could not connect to Elevator A Beacon.");
       setView({ session: data.session, command: null, guidance: null });
-      setMessage(`Profile ${slot} paired. Guidance is ready on your phone; the controller command waits for a sensed approach.`);
+      setMessage(`Profile ${slot} connected to Elevator A Beacon. Approach the sensor for your cue.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not pair with the node.");
+      setMessage(error instanceof Error ? error.message : "Could not connect to Elevator A Beacon.");
     } finally { setBusy(false); }
   }
   async function unpair() {
@@ -81,7 +80,7 @@ export default function NodePairing() {
       const response = await fetch("/api/nodes/pairing", { method: "DELETE" });
       if (!response.ok) throw new Error();
       setView({ session: null, command: null, guidance: null });
-      setMessage("Disconnected from Elevator A.");
+      setMessage("Disconnected from Elevator A Beacon.");
     } catch { setMessage("Could not disconnect. Try again."); }
     finally { setBusy(false); }
   }
@@ -173,11 +172,11 @@ export default function NodePairing() {
       if (generation === generationRef.current) requestRef.current = null;
     }
   }
-  return <section className="node-pairing" aria-label="Connect to Elevator A beacon">
+  return <section className="node-pairing" aria-label="Connect to Elevator A Beacon">
     <div className="node-pairing-heading">
       <div className="node-emblem"><Link2 size={25} /></div>
-      <div><p className="eyebrow">AT ELEVATOR A</p><h2>Guidance that follows your choices.</h2><p>Choose a profile and enter code A1. After pairing, an approach sounds one short cue.</p></div>
-      <span className="node-presence"><Radio size={15} /> {session ? "Paired" : "Pair to enable cue"}</span>
+      <div><p className="eyebrow">AT ELEVATOR A</p><h2>Elevator A Beacon</h2><p>Choose a profile and connect. When you approach, the beacon gives one short cue and your phone shows your directions.</p></div>
+      <span className="node-presence"><Radio size={15} /> {session ? "Connected" : "Ready to connect"}</span>
     </div>
     <div className="node-pairing-body">
       <div className="node-profile-editor">
@@ -199,10 +198,7 @@ export default function NodePairing() {
           </select>
         </label>
         <div className="node-pair-actions">
-          <label className="field">Node code
-            <input value={code} maxLength={8} autoComplete="off" placeholder="Code on beacon" onChange={(event) => setCode(event.target.value)} />
-          </label>
-          <button type="button" className="primary" disabled={busy || !code.trim()} onClick={() => void pair()}>{session ? `Pair profile ${slot}` : "Connect to node"} <ArrowRight size={17} /></button>
+          <button type="button" className="primary" disabled={busy} onClick={() => void pair()}>{session ? `Connect profile ${slot} to Elevator A Beacon` : "Connect to Elevator A Beacon"} <ArrowRight size={17} /></button>
         </div>
       </div>
       <div className="node-guidance" aria-live="polite">
@@ -221,7 +217,7 @@ export default function NodePairing() {
           </div>}
           <div className="controller-status"><Radio size={17} /><div><strong>{commandState}</strong><small>{command?.actuatorExecuted ? "Already sounded for this pairing. Wait 15 seconds, then pair again to repeat." : "The buzzer gives one short attention cue. Follow the full directions on your phone."}</small></div></div>
           <button type="button" className="node-disconnect" disabled={busy} onClick={() => void unpair()}>Disconnect this phone</button>
-        </> : <div className="node-empty"><Radio size={30} /><h3>Your next step, right here.</h3><p>Pair with code A1, then hold an object near the sensor for a few seconds. You’ll hear one cue and see personalized phone directions. The sensor does not identify you.</p></div>}
+        </> : <div className="node-empty"><Radio size={30} /><h3>Your next step, right here.</h3><p>Connect to Elevator A Beacon, then hold an object near its sensor for a few seconds. You’ll hear one cue and see your directions here. The sensor does not identify you.</p></div>}
         {message && <p className="small node-message" role="status">{message}</p>}
       </div>
     </div>

@@ -48,7 +48,7 @@ Pin-specific sources: [Arduino pin mapping](https://docs.arduino.cc/resources/pi
 1. Connect the UNO Q with a USB-C data cable and wire the HC-SR04 using the pin table above.
 2. Configure the API URL and token privately, establish ADB reverse forwarding, and start the App Lab app using the commands below.
 3. Observe raw distance and activity in Conditions. Keep raw distance unchanged; adjust only the foreground threshold for the installed sensor geometry.
-4. Print [the `A1` code label](uno-q/node-label.svg). Pair Profile A, approach the sensor, and check the short buzzer cue and phone guidance. The UI says “Buzzer cue completed” only after the controller confirms it finished the pulses. Repeat with Profile B, then disconnect the pairing.
+4. Print [the Elevator A Beacon label](uno-q/node-label.svg). Connect Profile A with the named button, approach the sensor, and check the short buzzer cue and phone guidance. The UI says “Buzzer cue completed” only after the controller confirms it finished the pulses. Repeat with Profile B, then disconnect the pairing.
 
 The UNO Q is detected via USB ADB. It does not need to appear as a conventional serial port.
 
