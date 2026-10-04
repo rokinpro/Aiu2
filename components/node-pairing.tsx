@@ -94,6 +94,8 @@ export default function NodePairing() {
   const selected = settings[slot];
   const session = view.session && Date.parse(view.session.expiresAt) > now ? view.session : null;
   const selectedProfileConnected = session?.profileSlot === slot;
+  const visibleMessage = !session && message.startsWith("Profile ") &&
+    message.includes(" connected to Elevator A Beacon.") ? "" : message;
   const speechKey = view.guidance ? [view.guidance.routeId, view.guidance.headline,
     view.guidance.detail, ...view.guidance.textDirections].join("|") : "";
   useEffect(() => {
@@ -231,7 +233,7 @@ export default function NodePairing() {
           </div>}
           <div className="controller-status"><Radio size={17} /><div><strong>{commandState}</strong><small>{command?.actuatorExecuted ? "Already sounded for this pairing. Wait 15 seconds, then pair again to repeat." : "The buzzer gives one short attention cue. Follow the full directions on your phone."}</small></div></div>
         </> : <div className="node-empty"><Radio size={30} /><h3>Your next step, right here.</h3><p>Connect to Elevator A Beacon, then hold an object near its sensor for a few seconds. You’ll hear one cue and see your directions here. The sensor does not identify you.</p></div>}
-        {message && <p className="small node-message" role="status">{message}</p>}
+        {visibleMessage && <p className="small node-message" role="status">{visibleMessage}</p>}
       </div>
     </div>
   </section>;
