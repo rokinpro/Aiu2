@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import ConditionsPanel from "@/components/conditions-panel";
+import SensorArchive from "@/components/sensor-archive";
 export default function Conditions() {
   return (
     <main id="main">
@@ -16,6 +17,7 @@ export default function Conditions() {
         </div>
       </div>
       <ConditionsPanel />
+      <SensorArchive />
       <section className="panel integration">
         <h2>Local readings, useful context.</h2>
         <p>

@@ -1073,6 +1073,12 @@ footer {
 .sensor-zone-list > div { display: flex; flex-direction: column; gap: 4px; padding: 13px; border: 1px solid #d9e4d9; border-radius: 9px; background: #f7faf5; }
 .sensor-zone-list strong { font-size: 13px; }
 .sensor-zone-list span { font-size: 12px; color: #56685b; text-transform: capitalize; }
+.sensor-archive { margin: 18px 0; border-color: #c8d9ce; background: #fbfdf9; }
+.sensor-archive-heading { display: flex; align-items: center; gap: 12px; color: #194f43; }
+.sensor-archive-heading h2 { font-size: 18px; }
+.sensor-archive-heading > span { margin-left: auto; padding: 6px 10px; border-radius: 20px; background: #e6f4e8; color: #245b3f; font-size: 11px; font-weight: 700; }
+.sensor-archive > p { margin-top: 9px; }
+.sensor-archive .sensor-zone-list { margin-bottom: 0; }
 @media (max-width: 600px) { .sensor-zone-list { grid-template-columns: 1fr; } }
 .node-pairing { margin: 0 0 25px; overflow: hidden; border: 1px solid #a8cbbb; border-radius: 15px; background: #fff; box-shadow: 0 10px 36px rgba(26, 79, 58, .06); }
 .node-pairing-heading { display: flex; gap: 17px; align-items: center; padding: 22px 25px; color: #f9fbf6; background: linear-gradient(115deg, #164e42, #2d725c 68%, #5c825b); }

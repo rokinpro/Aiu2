@@ -1,5 +1,7 @@
 import { authorized, body, sensorPayload, badRequest } from "@/lib/api";
 import { getStore } from "@/lib/storage";
+import { archiveSensorReading } from "@/lib/tiger-sensors";
+import { after } from "next/server";
 export const runtime = "nodejs";
 export async function POST(request: Request) {
   if (
@@ -22,5 +24,7 @@ export async function POST(request: Request) {
   const result = store.ingest(input);
   if (!result.duplicate && input.deviceId === "beacon-a" && input.sourceMode === "hardware")
     store.queueOnApproach();
+  if (!result.duplicate && process.env.DATABASE_URL)
+    after(() => archiveSensorReading(result.reading));
   return Response.json(result, { status: result.duplicate ? 200 : 201 });
 }
