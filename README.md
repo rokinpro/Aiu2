@@ -26,6 +26,8 @@ Open http://localhost:3000. To use the team's USB beacon setup, run `npm run dev
 - When a paired traveler selects spoken output, Play, Stop and Replay controls read the same deterministic phone directions and explanation shown as text. ElevenLabs generates MP3 audio on the server from current route guidance only; repeated phrases are cached in process memory for one hour. Playback never starts on its own or overlaps a changed route. If ElevenLabs is unavailable, the button uses clearly labeled browser speech where supported.
 - Contributors can optionally choose a photo and request a Gemini draft. It suggests only candidate visible features such as stairs, ramps and signage, with uncertainty and a checklist of details to confirm. The contributor must explicitly put the draft into the editable observation field and submit it. Photos are sent to Gemini only on Analyze, are not stored by Aiu2, and never change the map or live conditions.
 
+Three [synthetic sample images](demo-assets/README.md) are included for trying the photo flow without a campus photo.
+
 ## Sensor configuration
 
 Copy `.env.example` to `.env.local`. Set `AIU2_INGEST_TOKEN` to a randomly generated secret of at least 24 characters. Keep it on the server and UNO Q Python bridge, never in browser JavaScript. Ingestion returns 503 until configured and 401 for incorrect authentication.
