@@ -184,7 +184,10 @@ export default function NodePairing() {
     <div className="node-pairing-heading">
       <div className="node-emblem"><Link2 size={25} /></div>
       <div><p className="eyebrow">AT ELEVATOR A</p><h2>Elevator A Beacon</h2><p>Choose a profile and connect. When you approach, the beacon gives one short cue and your phone shows your directions.</p></div>
-      <span className="node-presence"><Radio size={15} /> {session ? "Connected" : "Ready to connect"}</span>
+      <div className="node-header-actions">
+        <span className="node-presence"><Radio size={15} /> {session ? `Profile ${session.profileSlot} connected` : "Ready to connect"}</span>
+        {session && <button type="button" className="node-header-disconnect" disabled={busy} onClick={() => void unpair()}>Disconnect phone</button>}
+      </div>
     </div>
     <div className="node-pairing-body">
       <div className="node-profile-editor">
@@ -227,7 +230,6 @@ export default function NodePairing() {
             <p className="small muted" role="status">{speechStatus || "Speech plays only when you choose Play. All directions remain in text."}</p>
           </div>}
           <div className="controller-status"><Radio size={17} /><div><strong>{commandState}</strong><small>{command?.actuatorExecuted ? "Already sounded for this pairing. Wait 15 seconds, then pair again to repeat." : "The buzzer gives one short attention cue. Follow the full directions on your phone."}</small></div></div>
-          <button type="button" className="node-disconnect" disabled={busy} onClick={() => void unpair()}>Disconnect this phone</button>
         </> : <div className="node-empty"><Radio size={30} /><h3>Your next step, right here.</h3><p>Connect to Elevator A Beacon, then hold an object near its sensor for a few seconds. You’ll hear one cue and see your directions here. The sensor does not identify you.</p></div>}
         {message && <p className="small node-message" role="status">{message}</p>}
       </div>
