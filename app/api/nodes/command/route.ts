@@ -28,19 +28,22 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const denied = auth(request);
   if (denied) return denied;
-  let deviceId: string, commandId: string, status: "received" | "rejected";
+  let deviceId: string, commandId: string, status: "received" | "rejected", actuatorExecuted: boolean;
   try {
     const data = await body(request);
     if (data.deviceId !== "beacon-a" || typeof data.commandId !== "string" ||
-        !/^[0-9a-f-]{36}$/.test(data.commandId) || !["received", "rejected"].includes(String(data.status)))
+        !/^[0-9a-f-]{36}$/.test(data.commandId) || !["received", "rejected"].includes(String(data.status)) ||
+        typeof data.actuatorExecuted !== "boolean" ||
+        (data.status === "rejected" && data.actuatorExecuted))
       throw new Error("Invalid acknowledgement");
     deviceId = data.deviceId;
     commandId = data.commandId;
     status = data.status as "received" | "rejected";
+    actuatorExecuted = data.actuatorExecuted as boolean;
   } catch {
     return Response.json({ error: "Invalid acknowledgement" }, { status: 400 });
   }
-  const result = getStore().acknowledgeCommand(deviceId, commandId, status);
+  const result = getStore().acknowledgeCommand(deviceId, commandId, status, Date.now(), actuatorExecuted);
   if (!result) return Response.json({ error: "Command expired or unavailable" }, { status: 410 });
   return Response.json(result);
 }

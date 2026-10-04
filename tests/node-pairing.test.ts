@@ -34,15 +34,23 @@ test("one opted-in pairing controls commands; retries, expiry and disconnect sta
     assert.equal(ack?.command.actuatorExecuted, false);
     assert.equal(store.acknowledgeCommand("beacon-a", command.id, "received", now + 5200)?.duplicate, true);
     assert.equal(store.pendingCommand("beacon-a", now + 5200), null);
+    for (let i = 0; i < 26; i++) store.ingest({ ...reading, sequence: i + 26 }, now + 16000 + i * 200);
+    assert.equal(store.queueOnApproach(now + 21100), null, "continued presence cannot repeat a cue within one pairing");
     const switched = store.pairNode("phone-one", {
       profileSlot: "B", profile: { ...defaultProfile, noStairs: false, resting: true },
       destination: "bench", outputChoice: "speech",
-    }, now + 5300);
+    }, now + 21200);
     assert.equal(switched?.profileSlot, "B");
     assert.equal(store.latestCommand("phone-one"), null, "old profile commands do not cross to the new pairing");
-    assert.equal(store.acknowledgeCommand("beacon-a", command.id, "received", now + 5400), null);
-    assert.equal(store.queueOnApproach(now + 11000), null, "USB silence makes presence stale");
-    assert.equal(store.acknowledgeCommand("beacon-a", command.id, "received", now + 11000), null, "expired command cannot be acknowledged");
+    assert.equal(store.acknowledgeCommand("beacon-a", command.id, "received", now + 21300), null);
+    const sounded = store.queueOnApproach(now + 21400);
+    assert.ok(sounded);
+    assert.equal(sounded.code, "GO_TO_HALL");
+    const completed = store.acknowledgeCommand("beacon-a", sounded.id, "received", now + 21500, true);
+    assert.equal(completed?.command.actuatorExecuted, true);
+    assert.equal(store.acknowledgeCommand("beacon-a", sounded.id, "received", now + 21600, false)?.command.actuatorExecuted, true);
+    assert.equal(store.queueOnApproach(now + 30000), null, "USB silence makes presence stale");
+    assert.equal(store.acknowledgeCommand("beacon-a", command.id, "received", now + 30000), null, "expired command cannot be acknowledged");
     assert.equal(store.unpairNode("phone-two"), false);
     assert.equal(store.unpairNode("phone-one"), true);
     assert.equal(store.getPairing("phone-one", now + 11000), null);

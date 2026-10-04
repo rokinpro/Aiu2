@@ -187,6 +187,10 @@ export function openStore(
       const conditions = this.conditions(now).zones.flatMap((item) => item.condition ? [item.condition] : []);
       const guidance = guidanceFor(session, conditions, now);
       if (!guidance.code || !guidance.phone.routeId) return null;
+      // One attention cue per explicit pairing; continued presence must not
+      // retrigger the buzzer. Re-pairing a profile creates a new session.
+      if (db.prepare("SELECT 1 FROM node_commands WHERE pairing=? LIMIT 1")
+        .get(session.id)) return null;
       const latest = db.prepare("SELECT payload FROM node_commands WHERE node='beacon-a' ORDER BY created DESC LIMIT 1")
         .get() as { payload: string } | undefined;
       if (latest && now - Date.parse((JSON.parse(latest.payload) as NodeCommand).createdAt) < 15000) return null;
@@ -206,7 +210,7 @@ export function openStore(
       const command = row ? JSON.parse(row.payload) as NodeCommand : null;
       return command?.controllerStatus === "queued" ? command : null;
     },
-    acknowledgeCommand(deviceId: string, commandId: string, status: "received" | "rejected", now = Date.now()) {
+    acknowledgeCommand(deviceId: string, commandId: string, status: "received" | "rejected", now = Date.now(), actuatorExecuted = false) {
       const row = db.prepare("SELECT c.payload FROM node_commands c JOIN node_pairing p ON p.node=c.node AND json_extract(p.payload,'$.id')=c.pairing WHERE c.id=? AND c.node=? AND c.expires>? AND p.expires>?")
         .get(commandId, deviceId, new Date(now).toISOString(), new Date(now).toISOString()) as { payload: string } | undefined;
       if (!row) return null;
@@ -214,7 +218,7 @@ export function openStore(
       if (command.controllerStatus !== "queued") return { command, duplicate: true };
       const updated: NodeCommand = {
         ...command, controllerStatus: status, acknowledgedAt: new Date(now).toISOString(),
-        actuatorExecuted: false,
+        actuatorExecuted: status === "received" && actuatorExecuted,
       };
       db.prepare("UPDATE node_commands SET payload=? WHERE id=?")
         .run(JSON.stringify(updated), commandId);

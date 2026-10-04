@@ -135,7 +135,7 @@ export type NodeCommand = {
   expiresAt: string;
   controllerStatus: "queued" | "received" | "rejected";
   acknowledgedAt: string | null;
-  actuatorExecuted: false;
+  actuatorExecuted: boolean;
 };
 export type PhoneGuidance = {
   headline: string;

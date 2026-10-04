@@ -18,6 +18,7 @@ inbound = queue.Queue(maxsize=1)
 acks = queue.Queue(maxsize=5)
 sequence = 0
 last_log = 0.0
+active_command = None
 
 
 def send_readings():
@@ -73,7 +74,8 @@ def send_acks():
                     break
                 try:
                     body = {"deviceId": "beacon-a", "commandId": payload["commandId"],
-                            "status": payload["status"]}
+                            "status": payload["status"],
+                            "actuatorExecuted": payload["actuatorExecuted"]}
                     request = Request(command_endpoint, data=json.dumps(body).encode(),
                                       headers={"Content-Type": "application/json",
                                                "Authorization": "Bearer " + token}, method="POST")
@@ -92,7 +94,7 @@ threading.Thread(target=send_acks, daemon=True).start()
 
 
 def loop():
-    global sequence, last_log
+    global sequence, last_log, active_command
     started = time.monotonic()
     try:
         duration = int(Bridge.call("aiu2_read_echo"))
@@ -119,21 +121,33 @@ def loop():
         command = inbound.get_nowait()
     except queue.Empty:
         command = None
-    if command:
+    if command and not active_command:
         try:
             remaining = int((command["deadline"] - time.monotonic()) * 1000)
             if 0 < remaining <= 5000 and command["nodeId"] == "beacon-a":
                 result = int(Bridge.call("aiu2_receive_guidance", command["id"],
                                          command["code"], remaining))
-                acknowledgement = {"commandId": command["id"],
-                                   "status": "received" if result in (1, 2) else "rejected",
-                                   "deadline": command["deadline"]}
-                try:
-                    acks.put_nowait(acknowledgement)
-                except queue.Full:
-                    pass
+                if result in (1, 2):
+                    active_command = command
+                else:
+                    acks.put_nowait({"commandId": command["id"], "status": "rejected",
+                                     "actuatorExecuted": False, "deadline": command["deadline"]})
         except Exception:
             # No successful RPC means no acknowledgement. The server will retry.
+            pass
+    if active_command:
+        try:
+            if time.monotonic() >= active_command["deadline"]:
+                active_command = None
+            elif int(Bridge.call("aiu2_guidance_status", active_command["id"])) == 2:
+                acks.put_nowait({"commandId": active_command["id"], "status": "received",
+                                 "actuatorExecuted": True,
+                                 "deadline": active_command["deadline"]})
+                active_command = None
+        except queue.Full:
+            pass
+        except Exception:
+            # Keep waiting until expiry; receipt alone cannot prove the cue ran.
             pass
     time.sleep(max(0, 0.2 - (time.monotonic() - started)))
 

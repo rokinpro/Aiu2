@@ -99,6 +99,7 @@ export default function NodePairing() {
   const seconds = session && now ? Math.max(0, Math.min(180, Math.ceil((Date.parse(session.expiresAt) - now) / 1000))) : null;
   const command = view.command;
   const commandState = !command ? "Waiting for an approach" :
+    command.actuatorExecuted ? "Buzzer cue completed" :
     command.controllerStatus === "received" ? "Controller received guidance" :
     command.controllerStatus === "rejected" ? "Controller rejected guidance" :
     Date.parse(command.expiresAt) <= now ? "Command expired before acknowledgement" :
@@ -218,7 +219,7 @@ export default function NodePairing() {
             </div>
             <p className="small muted" role="status">{speechStatus || "Speech plays only when you choose Play. All directions remain in text."}</p>
           </div>}
-          <div className="controller-status"><Radio size={17} /><div><strong>{commandState}</strong><small>No buzzer or vibration actuator is connected; this is controller receipt only.</small></div></div>
+          <div className="controller-status"><Radio size={17} /><div><strong>{commandState}</strong><small>The buzzer gives a short attention cue. Follow the full directions on your phone.</small></div></div>
           <button type="button" className="node-disconnect" disabled={busy} onClick={() => void unpair()}>Disconnect this phone</button>
         </> : <div className="node-empty"><Radio size={30} /><h3>Your next step, right here.</h3><p>Pair a profile to see personalized phone directions. The beacon never identifies someone from an ultrasonic reading.</p></div>}
         {message && <p className="small node-message" role="status">{message}</p>}
